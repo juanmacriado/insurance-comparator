@@ -1,64 +1,102 @@
-import Image from "next/image";
+'use client';
+
+import { useState } from 'react';
+import { Header } from '@/components/Header';
+import { FileUpload } from '@/components/FileUpload';
+import { ComparisonTable } from '@/components/ComparisonTable';
+import { PDFGenerator } from '@/components/PDFGenerator';
+import { processAndComparePDFs } from './actions';
+import { ComparisonReport } from '@/lib/comparator';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Home() {
+  const [report, setReport] = useState<ComparisonReport | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [files, setFiles] = useState<{ f1: File | null, f2: File | null }>({ f1: null, f2: null });
+
+  const handleFilesSelected = (f1: File | null, f2: File | null) => {
+    setFiles({ f1, f2 });
+    // Reset report when files change
+    setReport(null);
+    setError(null);
+  };
+
+  const handleCompare = async () => {
+    if (!files.f1 || !files.f2) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append('file1', files.f1);
+      formData.append('file2', files.f2);
+
+      const result = await processAndComparePDFs(formData);
+      setReport(result);
+    } catch (err) {
+      console.error(err);
+      setError("Hubo un error al procesar los archivos. Asegúrate de que son PDFs válidos y contienen texto.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+    <div className="min-h-screen bg-white">
+      <Header />
+
+      <main className="container mx-auto px-4 py-12 max-w-5xl">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold text-xeoris-blue mb-4">
+            Comparador de Pólizas
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+            Analiza y compara tus coberturas de ciberseguridad con inteligencia.
+            Sube dos pólizas y descubre cuál ofrece mejor protección.
           </p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+        <FileUpload onFilesSelected={handleFilesSelected} />
+
+        <div className="flex justify-center mb-12">
+          <button
+            onClick={handleCompare}
+            disabled={!files.f1 || !files.f2 || loading}
+            className="bg-xeoris-blue disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-lg font-semibold px-12 py-4 rounded-full shadow-xl hover:shadow-2xl transition-all transform hover:-translate-y-1 flex items-center gap-2"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            {loading ? (
+              <>
+                <Loader2 className="w-6 h-6 animate-spin" /> Procesando...
+              </>
+            ) : (
+              "Comparar Pólizas Ahora"
+            )}
+          </button>
         </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 max-w-2xl mx-auto mb-8">
+            <AlertCircle className="w-6 h-6" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        {report && files.f1 && files.f2 && (
+          <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+            <ComparisonTable
+              report={report}
+              file1Name={files.f1.name}
+              file2Name={files.f2.name}
+            />
+            <PDFGenerator
+              report={report}
+              file1Name={files.f1.name}
+              file2Name={files.f2.name}
+            />
+          </div>
+        )}
       </main>
     </div>
   );

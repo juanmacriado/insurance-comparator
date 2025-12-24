@@ -1,36 +1,44 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Xeoris - Comparador de Pólizas de Ciberseguridad
 
-## Getting Started
+Este proyecto es una herramienta avanzada para el análisis y comparación de pólizas de seguros de ciberseguridad. Utiliza Inteligencia Artificial (OpenAI GPT-4o) para extraer detalles críticos como límites de indemnización, franquicias y coberturas específicas.
 
-First, run the development server:
+## Características
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- 🛡️ **Análisis de PDF**: Extracción automática de texto de pólizas en formato PDF.
+- 🤖 **IA Integrada**: Uso de Vercel AI SDK y OpenAI para una extracción de datos precisa y contextual.
+- 🎨 **Diseño Xeoris**: Interfaz moderna y profesional alineada con la identidad visual de Xeoris.com.
+- 📄 **Generación de Informes**: Crea comparativas detalladas descargables en formato PDF.
+- ⚡ **Tecnología Next.js 15**: Rendimiento optimizado y Server Actions.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Requisitos Previos
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- Node.js 18+ instalado.
+- Una clave de API de OpenAI (`OPENAI_API_KEY`).
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Configuración Local
 
-## Learn More
+1. Clonar el repositorio.
+2. Instalar dependencias:
+   ```bash
+   npm install
+   ```
+3. Configurar variables de entorno:
+   Crea un archivo `.env.local` en la raíz con:
+   ```env
+   OPENAI_API_KEY=tu_clave_aqui
+   ```
+4. Ejecutar el servidor de desarrollo:
+   ```bash
+   npm run dev
+   ```
 
-To learn more about Next.js, take a look at the following resources:
+## Despliegue en Vercel
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+La forma más rápida de desplegar es usando [Vercel](https://vercel.com):
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Sube este proyecto a GitHub.
+2. Importa el proyecto en Vercel.
+3. Añade `OPENAI_API_KEY` en las variables de entorno de Vercel.
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Desarrollado para Xeoris - Ciberseguridad Inteligente.
