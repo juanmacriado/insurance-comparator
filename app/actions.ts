@@ -1,4 +1,5 @@
 'use server';
+// Cache bust: 2025-12-25 21:15
 
 import { extractTextFromPDF } from "@/lib/pdf-parser";
 import { comparePolicies, compareAIAnalyses, ComparisonReport } from "@/lib/comparator";
