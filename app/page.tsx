@@ -15,6 +15,7 @@ export default function Home() {
   const [loadingMsg, setLoadingMsg] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<{ f1: File | null, f2: File | null }>({ f1: null, f2: null });
+  const [clientName, setClientName] = useState("");
 
   const handleFilesSelected = (f1: File | null, f2: File | null) => {
     setFiles({ f1, f2 });
@@ -70,6 +71,19 @@ export default function Home() {
           </p>
         </div>
 
+        <div className="max-w-md mx-auto mb-10">
+          <label className="block text-sm font-bold text-xeoris-blue mb-2 uppercase tracking-wider text-center">
+            Nombre del Cliente
+          </label>
+          <input
+            type="text"
+            value={clientName}
+            onChange={(e) => setClientName(e.target.value)}
+            placeholder="Ej: Empresa de Servicios S.A."
+            className="w-full px-6 py-4 rounded-full border-2 border-gray-100 focus:border-xeoris-yellow focus:outline-none transition-all text-center text-lg shadow-sm"
+          />
+        </div>
+
         <FileUpload onFilesSelected={handleFilesSelected} />
 
         <div className="flex justify-center mb-12">
@@ -101,11 +115,13 @@ export default function Home() {
               report={report}
               file1Name={files.f1.name}
               file2Name={files.f2.name}
+              clientName={clientName}
             />
             <PDFGenerator
               report={report}
               file1Name={files.f1.name}
               file2Name={files.f2.name}
+              clientName={clientName}
             />
           </div>
         )}

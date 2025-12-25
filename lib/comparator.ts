@@ -4,8 +4,8 @@ export interface ComparisonResult {
     category: string;
     policy1Details: string;
     policy2Details: string;
-    policy1Amount: string;
-    policy1Deductible: string;
+    policy1Amount: string; // Used for Capital/Limit
+    policy1Deductible: string; // Used for Franquicia
     policy2Amount: string;
     policy2Deductible: string;
     policy1Scope: string;
@@ -23,7 +23,7 @@ export interface ComparisonReport {
     items: ComparisonResult[];
 }
 
-// Keywords to look for (Classic Path) - Updated for fallback
+// Fallback logic for extraction (Classic Path)
 const CATEGORIES = [
     { key: ['respuesta', 'incidente', 'asistencia', 'servicio'], label: 'Servicios de Respuesta a incidentes' },
     { key: ['mitigación', 'minoración', 'contención'], label: 'Gastos de Mitigación' },
@@ -56,7 +56,6 @@ function extractValues(text: string, keywords: string[]): { amount: string, dedu
     const end = Math.min(text.length, bestIndex + 1500);
     const window = text.substring(start, end);
 
-    // Look for deductible
     let deductible = "N/A";
     const franIndex = window.toLowerCase().indexOf('franquicia');
     if (franIndex !== -1) {
@@ -64,7 +63,6 @@ function extractValues(text: string, keywords: string[]): { amount: string, dedu
         if (match) deductible = match[0];
     }
 
-    // Look for Limit
     let amount = "N/A";
     const limitTerms = ['límite', 'capital', 'suma asegurada', 'sublímite'];
     const searchArea = window.toLowerCase().substring(200);
@@ -80,14 +78,6 @@ function extractValues(text: string, keywords: string[]): { amount: string, dedu
     if (bestLimitIndex !== -1) {
         const match = searchArea.substring(bestLimitIndex).match(MONEY_REGEX);
         if (match && match[0] !== deductible) amount = match[0];
-    }
-
-    if (amount === "N/A") {
-        const matches = window.match(MONEY_REGEX);
-        if (matches) {
-            const val = matches.find(m => m !== deductible);
-            if (val) amount = val;
-        }
     }
 
     return { amount, deductible };
@@ -110,8 +100,8 @@ export function comparePolicies(text1: string, text2: string): ComparisonReport 
 
         items.push({
             category: cat.label,
-            policy1Details: p1Has ? "Cobertura detectada." : "No detectada.",
-            policy2Details: p2Has ? "Cobertura detectada." : "No detectada.",
+            policy1Details: p1Has ? "Detectada." : "No detectada.",
+            policy2Details: p2Has ? "Detectada." : "No detectada.",
             policy1Amount: v1.amount,
             policy1Deductible: v1.deductible,
             policy2Amount: v2.amount,
@@ -119,7 +109,7 @@ export function comparePolicies(text1: string, text2: string): ComparisonReport 
             policy1Scope: "No analizado",
             policy2Scope: "No analizado",
             betterPolicy: better,
-            reason: better === 'equal' ? "Similares" : (better === 1 ? "Mejor en Póliza 1" : "Mejor en Póliza 2")
+            reason: "Análisis manual de texto."
         });
     });
 
@@ -138,6 +128,7 @@ export function compareAIAnalyses(analysis1: PolicyAnalysis, analysis2: PolicyAn
     let score1 = 0;
     let score2 = 0;
 
+    // First, push coverage items
     CoverageCategories.forEach(cat => {
         const c1 = analysis1.coverages.find(c => c.category === cat);
         const c2 = analysis2.coverages.find(c => c.category === cat);
@@ -160,10 +151,37 @@ export function compareAIAnalyses(analysis1: PolicyAnalysis, analysis2: PolicyAn
             policy1Scope: c1?.scope || "No especificado",
             policy2Scope: c2?.scope || "No especificado",
             betterPolicy: better,
-            reason: better === 1 ? "La póliza 1 tiene mejor cobertura." :
-                better === 2 ? "La póliza 2 tiene mejor cobertura." :
-                    "Ambas pólizas son similares."
+            reason: ""
         });
+    });
+
+    // Add Premium rows at the end to be included in the same table
+    items.push({
+        category: "Prima Neta",
+        policy1Details: `Importe Neto: ${analysis1.netPremium || "N/A"}`,
+        policy2Details: `Importe Neto: ${analysis2.netPremium || "N/A"}`,
+        policy1Amount: analysis1.netPremium || "N/A",
+        policy1Deductible: "N/A",
+        policy2Amount: analysis2.netPremium || "N/A",
+        policy2Deductible: "N/A",
+        policy1Scope: "Pago Único/Anual",
+        policy2Scope: "Pago Único/Anual",
+        betterPolicy: 'equal',
+        reason: "Comparativa de costes netos."
+    });
+
+    items.push({
+        category: "Prima Total (Impuestos Inc.)",
+        policy1Details: `Importe Total: ${analysis1.totalPremium || "N/A"}`,
+        policy2Details: `Importe Total: ${analysis1.totalPremium || "N/A"}`,
+        policy1Amount: analysis1.totalPremium || "N/A",
+        policy1Deductible: "N/A",
+        policy2Amount: analysis2.totalPremium || "N/A",
+        policy2Deductible: "N/A",
+        policy1Scope: "Importe final al cliente",
+        policy2Scope: "Importe final al cliente",
+        betterPolicy: 'equal',
+        reason: "Coste total de la inversión."
     });
 
     return {

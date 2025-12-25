@@ -7,9 +7,10 @@ interface PDFGeneratorProps {
     report: ComparisonReport;
     file1Name: string;
     file2Name: string;
+    clientName?: string;
 }
 
-export function PDFGenerator({ report, file1Name, file2Name }: PDFGeneratorProps) {
+export function PDFGenerator({ report, file1Name, file2Name, clientName }: PDFGeneratorProps) {
     const generatePDF = async () => {
         // Dynamic import to avoid SSR issues
         const { default: jsPDF } = await import('jspdf');
@@ -17,79 +18,61 @@ export function PDFGenerator({ report, file1Name, file2Name }: PDFGeneratorProps
 
         const doc = new jsPDF();
 
-        // Header - Dark Xeoris Blue
-        doc.setFillColor(22, 48, 58); // #16303A
-        doc.rect(0, 0, 210, 45, 'F');
+        // Header - Xeoris Colors
+        doc.setFillColor(22, 48, 58); // Dark Blue
+        doc.rect(0, 0, 210, 40, 'F');
+
+        doc.setFillColor(255, 230, 0); // Yellow Accent Line
+        doc.rect(0, 40, 210, 2, 'F');
 
         doc.setTextColor(255, 255, 255);
-        doc.setFontSize(22);
+        doc.setFontSize(20);
         doc.setFont('helvetica', 'bold');
-        doc.text("Comparativa de Ciberpólizas", 105, 20, { align: 'center' });
+        const mainTitle = clientName ? `Diferentes soluciones para ${clientName}` : "Comparativa de Soluciones Ciber";
+        doc.text(mainTitle, 105, 25, { align: 'center' });
 
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Analizado con Inteligencia Artificial por Xeoris.com`, 105, 30, { align: 'center' });
+        doc.text(`Análisis técnico y comparativa de coberturas by Xeoris.com`, 105, 33, { align: 'center' });
 
-        // Summary & Winner
-        doc.setTextColor(22, 48, 58);
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text("Resumen Ejecutivo:", 14, 60);
+        // Removed Executive Summary / Winner section as requested.
+        // Starting directly with the table.
 
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(0, 0, 0);
-        const winnerName = report.overallWinner === 1 ? file1Name : (report.overallWinner === 2 ? file2Name : "Empate técnico");
-        doc.text(`La póliza ganadora según el análisis de coberturas es: `, 14, 70);
-        doc.setFont('helvetica', 'bold');
-        doc.text(winnerName, 95, 70);
-
-        // Premiums Summary - NEW
-        doc.setFillColor(243, 244, 246);
-        doc.rect(14, 78, 182, 25, 'F');
-
-        doc.setTextColor(22, 48, 58);
-        doc.setFontSize(10);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Primas ${file1Name}:`, 20, 86);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Total: ${report.policy1PremiumTotal} / Neta: ${report.policy1PremiumNet}`, 20, 92);
-
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Primas ${file2Name}:`, 110, 86);
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Total: ${report.policy2PremiumTotal} / Neta: ${report.policy2PremiumNet}`, 110, 92);
-
-        // Table Data
+        // Table Data Preparation
         const tableData = report.items.map(item => {
+            const isPremium = item.category.toLowerCase().includes('prima');
+
             let p1 = item.policy1Details;
-            if (item.policy1Amount !== "N/A") p1 += `\nLIM: ${item.policy1Amount}`;
-            if (item.policy1Deductible !== "N/A") p1 += `\nFRANQ: ${item.policy1Deductible}`;
-            if (item.policy1Scope !== "No especificado" && item.policy1Scope !== "No analizado") p1 += `\nAMBITO: ${item.policy1Scope}`;
-            if (item.betterPolicy === 1) p1 += `\n[MEJOR OPCIÓN]`;
+            if (!isPremium) {
+                if (item.policy1Amount !== "N/A") p1 += `\nLímite: ${item.policy1Amount}`;
+                if (item.policy1Deductible !== "N/A") p1 += `\nFranq: ${item.policy1Deductible}`;
+                if (item.policy1Scope !== "No especificado" && item.policy1Scope !== "No analizado") p1 += `\nÁmbito: ${item.policy1Scope}`;
+                if (item.betterPolicy === 1) p1 += `\n[MÁS FAVORABLE]`;
+            }
 
             let p2 = item.policy2Details;
-            if (item.policy2Amount !== "N/A") p2 += `\nLIM: ${item.policy2Amount}`;
-            if (item.policy2Deductible !== "N/A") p2 += `\nFRANQ: ${item.policy2Deductible}`;
-            if (item.policy2Scope !== "No especificado" && item.policy2Scope !== "No analizado") p2 += `\nAMBITO: ${item.policy2Scope}`;
-            if (item.betterPolicy === 2) p2 += `\n[MEJOR OPCIÓN]`;
+            if (!isPremium) {
+                if (item.policy2Amount !== "N/A") p2 += `\nLímite: ${item.policy2Amount}`;
+                if (item.policy2Deductible !== "N/A") p2 += `\nFranq: ${item.policy2Deductible}`;
+                if (item.policy2Scope !== "No especificado" && item.policy2Scope !== "No analizado") p2 += `\nÁmbito: ${item.policy2Scope}`;
+                if (item.betterPolicy === 2) p2 += `\n[MÁS FAVORABLE]`;
+            }
 
             return [item.category, p1, p2];
         });
 
+        // Generate Table
         autoTable(doc, {
-            startY: 110,
-            head: [['Bloque de Cobertura', file1Name, file2Name]],
+            startY: 55,
+            head: [['Concepto / Cobertura', file1Name, file2Name]],
             body: tableData,
             theme: 'grid',
             headStyles: { fillColor: [22, 48, 58], textColor: 255, fontStyle: 'bold' },
-            bodyStyles: { fontSize: 8, cellPadding: 4 },
+            bodyStyles: { fontSize: 8, cellPadding: 4, textColor: [50, 50, 50] },
             columnStyles: {
-                0: { cellWidth: 40, fontStyle: 'bold' },
-                1: { cellWidth: 71 },
-                2: { cellWidth: 71 }
+                0: { cellWidth: 40, fontStyle: 'bold', fillColor: [250, 250, 250] }
             },
-            alternateRowStyles: { fillColor: [250, 250, 250] }
+            alternateRowStyles: { fillColor: [255, 255, 255] }
         });
 
         // Footer
@@ -98,21 +81,23 @@ export function PDFGenerator({ report, file1Name, file2Name }: PDFGeneratorProps
             doc.setPage(i);
             doc.setFontSize(8);
             doc.setTextColor(150);
-            doc.text('Este informe ha sido generado automáticamente para Xeoris.com. Los datos son orientativos.', 105, 285, { align: 'center' });
+            const footerText = 'Informe profesional generado por Xeoris.com - Especialistas en Gestión de Ciberriesgos';
+            doc.text(footerText, 105, 285, { align: 'center' });
             doc.text(`Página ${i} de ${pageCount}`, 105, 290, { align: 'center' });
         }
 
-        doc.save(`comparativa-${file1Name}-vs-${file2Name}.pdf`);
+        const fileName = clientName ? `Diferentes-soluciones-${clientName.replace(/\s+/g, '-')}.pdf` : 'comparativa-xeoris.pdf';
+        doc.save(fileName);
     };
 
     return (
         <div className="flex justify-center mt-12 pb-16">
             <button
                 onClick={generatePDF}
-                className="flex items-center gap-2 bg-xeoris-yellow text-xeoris-blue hover:bg-yellow-400 font-bold py-4 px-10 rounded-full shadow-xl transition-all hover:scale-105 active:scale-95"
+                className="flex items-center gap-2 bg-xeoris-blue text-xeoris-yellow hover:bg-slate-800 font-bold py-4 px-10 rounded-full shadow-2xl transition-all hover:scale-105 active:scale-95 border-2 border-xeoris-yellow"
             >
                 <Download className="w-5 h-5" />
-                Descargar Informe Personalizado PDF
+                Descargar Informe: {clientName ? `Soluciones ${clientName}` : "PDF Xeoris"}
             </button>
         </div>
     );

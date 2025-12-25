@@ -20,10 +20,10 @@ export type CoverageCategory = typeof CoverageCategories[number];
 const PolicyCoverageSchema = z.object({
     category: z.string().describe('The name of the coverage block'),
     isPresent: z.boolean().describe('Whether this coverage is mentioned in the policy'),
-    details: z.string().describe('Detailed but concise summary of the coverage conditions and terms.'),
+    details: z.string().describe('Detailed but concise summary in SPANISH.'),
     amount: z.string().describe('The monetary limit (Capital) for this coverage, e.g., "500.000€". Use "N/A" if not found.'),
     deductible: z.string().describe('The deductible (Franquicia) amount, e.g., "1.000€" or "24 horas". Use "N/A" if not found.'),
-    scope: z.string().describe('Territorial scope (ámbito territorial) or scope of application. Mention if it applies to specific regions or assets.')
+    scope: z.string().describe('Territorial scope (ámbito territorial) or scope of application in SPANISH.')
 });
 
 const PolicyAnalysisSchema = z.object({
@@ -39,38 +39,39 @@ export async function analyzePolicyWithAI(text: string): Promise<PolicyAnalysis>
         throw new Error("Missing OPENAI_API_KEY environment variable");
     }
 
-    // Increased truncation limit: 100k chars is enough for most policies (~50-60 pages)
+    // Process first 100k chars for high-quality context
     const truncatedText = text.substring(0, 100000);
 
     const { object } = await generateObject({
         model: openai('gpt-4o'),
         schema: PolicyAnalysisSchema,
-        system: `You are an expert insurance underwriter specializing in Cyber Insurance policies.
-    Analyze the provided policy text and extract information for the specific coverage blocks and premiums.
+        system: `Eres un experto suscriptor de seguros especializado en Ciberseguridad. 
+    TU RESPUESTA DEBE SER EXCLUSIVAMENTE EN ESPAÑOL. NO USES INGLÉS EN LOS DETALLES NI EN EL ÁMBITO.
     
+    Analiza la póliza y extrae la información de PRIMAS y las 9 categorías de cobertura solicitadas.
+
     PREMIUMS TO EXTRACT:
     - Prima Neta (Net Premium)
     - Prima Total (Total Premium with taxes)
 
-    COVERAGE BLOCKS TO ANALYZE:
-    1. Servicios de Respuesta a incidentes: Focus on response services, territorial scope, and deductibles.
-    2. Gastos de Mitigación: Focus on amount and deductible.
-    3. Pérdida de Beneficios: Focus on amount, deductible, and territorial scope.
-    4. Extorsión Cibernética: Focus on amount and deductible.
-    5. Gastos de Recuperación de Datos y Sistemas: Focus on amount and scope of application.
-    6. Protección de Equipos: Focus on amount and deductible.
-    7. Responsabilidad Tecnológica / Responsabilidad Civil: Focus on amount and scope of application.
-    8. Fraude Tecnológico: Focus on amount and deductible.
-    9. Ecrime / Suplantación de Identidad: Focus on amount and deductible.
+    CATEGORÍAS A ANALIZAR:
+    1. Servicios de Respuesta a incidentes: Servicios forestenses, legales, etc. Ámbito territorial y franquicia.
+    2. Gastos de Mitigación: Gastos para aminorar daños.
+    3. Pérdida de Beneficios: Interrupción de negocio. cantidad, franquicia y ámbito.
+    4. Extorsión Cibernética: Ransomware, amenazas.
+    5. Gastos de Recuperación de Datos y Sistemas: Restauración.
+    6. Protección de Equipos: Hardware y activos fijos.
+    7. Responsabilidad Tecnológica / Responsabilidad Civil: Demandas de terceros.
+    8. Fraude Tecnológico: Transferencias fraudulentas.
+    9. Ecrime / Suplantación de Identidad: Phishing activo, robo de identidad.
 
-    Rules:
-    - For each block, find the corresponding limit (Capital) and deductible (Franquicia).
-    - Capture the scope (ámbito territorial o de aplicación) when specified.
-    - Be precise with amounts and currencies. 
-    - If a coverage is not explicitly mentioned, mark isPresent as false.
-    - Normalize amounts to a consistent format (e.g., "1.000.000€").
-    - Specifically look for the "Recibo de Prima" or "Desglose de Prima" section for Net and Total amounts.`,
-        prompt: `Analyze the following policy text and extract information for the premiums and the 9 coverage blocks mentioned:\n\n${truncatedText}`,
+    Reglas:
+    - RESPONDE SIEMPRE EN ESPAÑOL.
+    - Captura con precisión los límites (Capital) y franquicias.
+    - Extrae el ámbito territorial (España, UE, Mundial, etc.).
+    - Si no encuentras una cobertura, marca isPresent: false.
+    - Normaliza importes (p.ej. "1.000.000€").`,
+        prompt: `Analiza este texto de póliza de seguro y extrae los datos solicitados en ESPAÑOL:\n\n${truncatedText}`,
     });
 
     return object;

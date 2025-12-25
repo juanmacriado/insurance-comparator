@@ -43,17 +43,17 @@ export function FileUpload({ onFilesSelected }: FileUploadProps) {
     };
 
     return (
-        <div className="my-8">
+        <div className="my-6 max-w-2xl mx-auto">
             {error && (
-                <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm border border-red-100 animate-in fade-in slide-in-from-top-2">
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-4 text-sm border border-red-100 animate-in fade-in slide-in-from-top-2 text-center">
                     {error}
                 </div>
             )}
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid grid-cols-2 gap-4">
                 {/* Slot 1 */}
                 <UploadSlot
                     file={file1}
-                    label="Subir PDF 1"
+                    label="Póliza 1"
                     onChange={(e) => handleFileChange(e, 1)}
                     onClear={() => clearFile(1)}
                 />
@@ -61,7 +61,7 @@ export function FileUpload({ onFilesSelected }: FileUploadProps) {
                 {/* Slot 2 */}
                 <UploadSlot
                     file={file2}
-                    label="Subir PDF 2"
+                    label="Póliza 2"
                     onChange={(e) => handleFileChange(e, 2)}
                     onClear={() => clearFile(2)}
                 />
@@ -83,31 +83,34 @@ function UploadSlot({
 }) {
     return (
         <div className={cn(
-            "border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-colors min-h-[200px]",
-            file ? "border-xeoris-blue bg-blue-50/50" : "border-gray-200 hover:border-xeoris-yellow"
+            "group relative border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300 min-h-[140px]",
+            file
+                ? "border-xeoris-blue bg-xeoris-yellow/5"
+                : "border-gray-200 hover:border-xeoris-yellow hover:bg-xeoris-yellow/5"
         )}>
             {file ? (
                 <div className="text-center w-full">
-                    <div className="bg-xeoris-blue/10 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <FileText className="w-8 h-8 text-xeoris-blue" />
+                    <div className="bg-xeoris-blue text-xeoris-yellow w-10 h-10 rounded-full flex items-center justify-center mx-auto mb-2 shadow-md">
+                        <FileText className="w-5 h-5" />
                     </div>
-                    <p className="font-medium text-xeoris-blue truncate max-w-[200px] mx-auto mb-2">
+                    <p className="text-xs font-bold text-xeoris-blue truncate max-w-[120px] mx-auto mb-2 uppercase tracking-tight">
                         {file.name}
                     </p>
                     <button
                         onClick={onClear}
-                        className="text-sm text-red-500 hover:text-red-700 flex items-center justify-center gap-1 mx-auto"
+                        className="p-1.5 bg-red-100 text-red-600 rounded-full hover:bg-red-600 hover:text-white transition-colors absolute -top-2 -right-2 shadow-sm"
+                        title="Eliminar archivo"
                     >
-                        <X className="w-4 h-4" /> Eliminar
+                        <X className="w-3 h-3" />
                     </button>
                 </div>
             ) : (
                 <label className="cursor-pointer text-center w-full h-full flex flex-col items-center justify-center">
-                    <div className="bg-gray-100 w-16 h-16 rounded-full flex items-center justify-center mb-4 transition-colors group-hover:bg-xeoris-yellow/20">
-                        <Upload className="w-8 h-8 text-gray-400 group-hover:text-xeoris-blue" />
+                    <div className="bg-xeoris-yellow text-xeoris-blue w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-transform group-hover:scale-110 shadow-sm">
+                        <Upload className="w-5 h-5" />
                     </div>
-                    <span className="text-lg font-medium text-gray-600 mb-1">{label}</span>
-                    <span className="text-sm text-gray-400">PDF (Max 50MB)</span>
+                    <span className="text-sm font-bold text-xeoris-blue mb-0.5 uppercase tracking-wide">{label}</span>
+                    <span className="text-[10px] text-gray-400 font-medium">Click para subir</span>
                     <input
                         type="file"
                         accept=".pdf"
