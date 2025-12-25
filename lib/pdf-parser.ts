@@ -1,3 +1,18 @@
+// Polyfill DOMMatrix for pdf-parse v2 in Node.js environment
+if (typeof global.DOMMatrix === 'undefined') {
+    try {
+        // Try to get it from @napi-rs/canvas which is already a dependency
+        const { DOMMatrix } = require('@napi-rs/canvas');
+        (global as typeof globalThis & { DOMMatrix: any }).DOMMatrix = DOMMatrix;
+    } catch (e) {
+        // Fallback for environments where canvas might fail to load
+        console.warn("Failed to load DOMMatrix from @napi-rs/canvas, using dummy polyfill");
+        (global as typeof globalThis & { DOMMatrix: any }).DOMMatrix = class DOMMatrix {
+            constructor() { }
+        };
+    }
+}
+
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
