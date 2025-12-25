@@ -1,32 +1,39 @@
 'use server';
-// Optimization: Increased payload limits and enhanced PDF extraction stability. Sync: 2025-12-25 22:00
+// Optimization: Multi-step processing to bypass Vercel 4.5MB payload limit.
 
 import { extractTextFromPDF } from "@/lib/pdf-parser";
 import { comparePolicies, compareAIAnalyses, ComparisonReport } from "@/lib/comparator";
 import { analyzePolicyWithAI } from "@/lib/ai-analyzer";
 
-export async function processAndComparePDFs(formData: FormData): Promise<ComparisonReport> {
+/**
+ * Extracts text from a single PDF file passed via FormData.
+ * This allows uploading one file at a time to stay under Vercel's 4.5MB payload limit.
+ */
+export async function extractTextAction(formData: FormData): Promise<string> {
     try {
-        const file1 = formData.get('file1') as File;
-        const file2 = formData.get('file2') as File;
+        const file = formData.get('file') as File;
+        if (!file) throw new Error("No se ha proporcionado ningún archivo.");
 
-        console.log(`[ACTION] Received files: ${file1?.name} (${file1?.size} bytes), ${file2?.name} (${file2?.size} bytes)`);
+        console.log(`[ACTION] Extracting text from: ${file.name} (${file.size} bytes)`);
 
-        if (!file1 || !file2) {
-            throw new Error("Faltan archivos por subir.");
-        }
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const text = await extractTextFromPDF(buffer);
 
-        console.log("[ACTION] Converting to buffers...");
-        const buffer1 = Buffer.from(await file1.arrayBuffer());
-        const buffer2 = Buffer.from(await file2.arrayBuffer());
+        console.log(`[ACTION] Extraction successful: ${text.length} characters.`);
+        return text;
+    } catch (error) {
+        console.error("[ACTION] Error extracting text:", error);
+        throw new Error(error instanceof Error ? error.message : "Error al extraer texto del PDF.");
+    }
+}
 
-        console.log("[ACTION] Extracting text from PDF 1...");
-        const text1 = await extractTextFromPDF(buffer1);
-        console.log(`[ACTION] Text 1 extracted (${text1.length} chars)`);
-
-        console.log("[ACTION] Extracting text from PDF 2...");
-        const text2 = await extractTextFromPDF(buffer2);
-        console.log(`[ACTION] Text 2 extracted (${text2.length} chars)`);
+/**
+ * Compares two already extracted texts.
+ * Minimal payload, safe for Vercel.
+ */
+export async function compareTextsAction(text1: string, text2: string): Promise<ComparisonReport> {
+    try {
+        console.log(`[ACTION] Comparing texts of length ${text1.length} and ${text2.length}`);
 
         // AI Analysis Path
         if (process.env.OPENAI_API_KEY) {
@@ -40,17 +47,28 @@ export async function processAndComparePDFs(formData: FormData): Promise<Compari
                 return compareAIAnalyses(analysis1, analysis2);
             } catch (error) {
                 console.error("[ACTION] AI Analysis failed:", error);
-                // Fallthrough to classic extraction logic
                 console.log("[ACTION] Falling back to classic extraction logic...");
             }
-        } else {
-            console.log("[ACTION] No OPENAI_API_KEY found, using classic extraction.");
         }
 
         // Classic Regex Path
         return comparePolicies(text1, text2);
     } catch (error) {
-        console.error("[ACTION] Fatal error in processAndComparePDFs:", error);
-        throw new Error(error instanceof Error ? error.message : "Error inesperado al procesar los documentos.");
+        console.error("[ACTION] Fatal error in comparison:", error);
+        throw new Error(error instanceof Error ? error.message : "Error al comparar los textos.");
     }
+}
+
+// Keep the old one for compatibility until UI is updated
+export async function processAndComparePDFs(formData: FormData): Promise<ComparisonReport> {
+    const file1 = formData.get('file1') as File;
+    const file2 = formData.get('file2') as File;
+
+    const buffer1 = Buffer.from(await file1.arrayBuffer());
+    const buffer2 = Buffer.from(await file2.arrayBuffer());
+
+    const text1 = await extractTextFromPDF(buffer1);
+    const text2 = await extractTextFromPDF(buffer2);
+
+    return compareTextsAction(text1, text2);
 }

@@ -5,19 +5,19 @@ import { Header } from '@/components/Header';
 import { FileUpload } from '@/components/FileUpload';
 import { ComparisonTable } from '@/components/ComparisonTable';
 import { PDFGenerator } from '@/components/PDFGenerator';
-import { processAndComparePDFs } from './actions';
+import { extractTextAction, compareTextsAction } from './actions';
 import { ComparisonReport } from '@/lib/comparator';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function Home() {
   const [report, setReport] = useState<ComparisonReport | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [files, setFiles] = useState<{ f1: File | null, f2: File | null }>({ f1: null, f2: null });
 
   const handleFilesSelected = (f1: File | null, f2: File | null) => {
     setFiles({ f1, f2 });
-    // Reset report when files change
     setReport(null);
     setError(null);
   };
@@ -29,18 +29,29 @@ export default function Home() {
     setError(null);
 
     try {
-      const formData = new FormData();
-      formData.append('file1', files.f1);
-      formData.append('file2', files.f2);
+      // Step 1: Extract text from File 1
+      setLoadingMsg("Analizando primer PDF...");
+      const formData1 = new FormData();
+      formData1.append('file', files.f1);
+      const text1 = await extractTextAction(formData1);
 
-      const result = await processAndComparePDFs(formData);
+      // Step 2: Extract text from File 2
+      setLoadingMsg("Analizando segundo PDF...");
+      const formData2 = new FormData();
+      formData2.append('file', files.f2);
+      const text2 = await extractTextAction(formData2);
+
+      // Step 3: Compare
+      setLoadingMsg("Comparando coberturas...");
+      const result = await compareTextsAction(text1, text2);
       setReport(result);
     } catch (err) {
       console.error("DEBUG ERROR:", err);
       const message = err instanceof Error ? err.message : "Error inesperado";
-      setError(`Error: ${message}. Esto puede deberse a que los archivos son muy grandes o al tiempo de espera de Vercel.`);
+      setError(`Error: ${message}. Esto puede suceder con archivos muy complejos o falta de conexión.`);
     } finally {
       setLoading(false);
+      setLoadingMsg("");
     }
   };
 
@@ -69,7 +80,7 @@ export default function Home() {
           >
             {loading ? (
               <>
-                <Loader2 className="w-6 h-6 animate-spin" /> Procesando...
+                <Loader2 className="w-6 h-6 animate-spin" /> {loadingMsg || "Procesando..."}
               </>
             ) : (
               "Comparar Pólizas Ahora"
