@@ -29,8 +29,8 @@ export async function processAndComparePDFs(formData: FormData): Promise<Compari
             console.log("AI analysis complete.");
             return compareAIAnalyses(analysis1, analysis2);
         } catch (error) {
-            console.error("AI Analysis failed, falling back to regex regex:", error);
-            // Fallthrough to regex
+            console.error("AI Analysis failed, falling back to classic extraction:", error);
+            // Fallthrough to manual extraction logic
         }
     }
 
