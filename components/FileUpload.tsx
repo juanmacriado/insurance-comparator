@@ -40,18 +40,18 @@ export function FileUpload({ slots, onFilesSelected }: FileUploadProps) {
     };
 
     return (
-        <div className="my-8 max-w-4xl mx-auto">
+        <div className="my-10 max-w-5xl mx-auto px-4">
             <div className={cn(
-                "grid gap-4",
+                "grid gap-6",
                 slots === 1 ? "grid-cols-1 max-w-sm mx-auto" :
-                    slots === 2 ? "grid-cols-2" :
-                        "grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+                    slots === 2 ? "grid-cols-1 sm:grid-cols-2" :
+                        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
             )}>
                 {new Array(slots).fill(0).map((_, i) => (
                     <UploadSlot
                         key={i}
                         file={files[i]}
-                        label={`Oferta ${i + 1}`}
+                        label={`Propuesta ${i + 1}`}
                         onChange={(e) => handleFileChange(e, i)}
                         onClear={() => clearFile(i)}
                     />
@@ -74,32 +74,32 @@ function UploadSlot({
 }) {
     return (
         <div className={cn(
-            "group relative border-2 border-dashed rounded-2xl p-4 flex flex-col items-center justify-center transition-all duration-300 min-h-[120px]",
+            "group relative border-2 border-dashed rounded-[1.5rem] p-6 flex flex-col items-center justify-center transition-all duration-300 min-h-[140px]",
             file
-                ? "border-xeoris-yellow bg-xeoris-yellow/5 shadow-[0_0_15px_rgba(255,230,0,0.1)]"
-                : "border-gray-700/50 hover:border-xeoris-yellow hover:bg-xeoris-yellow/5"
+                ? "border-slate-900 bg-slate-50 shadow-md"
+                : "border-slate-200 bg-white hover:border-yellow-400 hover:bg-yellow-50/30"
         )}>
             {file ? (
                 <div className="text-center w-full">
-                    <div className="bg-xeoris-yellow text-xeoris-blue w-9 h-9 rounded-full flex items-center justify-center mx-auto mb-2 shadow-lg">
-                        <FileText className="w-4 h-4" />
+                    <div className="bg-slate-900 text-yellow-400 w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
+                        <FileText className="w-5 h-5" />
                     </div>
-                    <p className="text-[10px] font-bold text-xeoris-yellow truncate max-w-[90px] mx-auto mb-1 uppercase tracking-tighter">
+                    <p className="text-[11px] font-black text-slate-900 truncate max-w-[120px] mx-auto mb-1 uppercase tracking-tighter">
                         {file.name}
                     </p>
                     <button
                         onClick={onClear}
-                        className="p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors absolute -top-2 -right-2 shadow-md"
+                        className="p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors absolute -top-2 -right-2 shadow-lg border-2 border-white"
                     >
-                        <X className="w-3 h-3" />
+                        <X className="w-3.5 h-3.5" />
                     </button>
                 </div>
             ) : (
-                <label className="cursor-pointer text-center w-full h-full flex flex-col items-center justify-center">
-                    <div className="bg-gray-800 text-xeoris-yellow w-9 h-9 rounded-full flex items-center justify-center mb-2 transition-all group-hover:bg-xeoris-yellow group-hover:text-xeoris-blue shadow-inner">
-                        <Upload className="w-4 h-4" />
+                <label className="cursor-pointer text-center w-full h-full flex flex-col items-center justify-center py-4">
+                    <div className="bg-slate-100 text-slate-400 w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all group-hover:bg-yellow-400 group-hover:text-slate-900 shadow-inner">
+                        <Upload className="w-5 h-5" />
                     </div>
-                    <span className="text-[11px] font-bold text-gray-400 group-hover:text-xeoris-yellow transition-colors uppercase tracking-widest">{label}</span>
+                    <span className="text-[12px] font-black text-slate-400 group-hover:text-slate-900 transition-colors uppercase tracking-[0.2em]">{label}</span>
                     <input
                         type="file"
                         accept=".pdf"
