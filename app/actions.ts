@@ -2,12 +2,11 @@
 // Optimization: Multi-step processing to bypass Vercel 4.5MB payload limit.
 
 import { extractTextFromPDF } from "@/lib/pdf-parser";
-import { comparePolicies, compareAIAnalyses, ComparisonReport } from "@/lib/comparator";
+import { compareAIAnalyses, ComparisonReport } from "@/lib/comparator";
 import { analyzePolicyWithAI } from "@/lib/ai-analyzer";
 
 /**
  * Extracts text from a single PDF file passed via FormData.
- * This allows uploading one file at a time to stay under Vercel's 4.5MB payload limit.
  */
 export async function extractTextAction(formData: FormData): Promise<string> {
     try {
@@ -28,47 +27,27 @@ export async function extractTextAction(formData: FormData): Promise<string> {
 }
 
 /**
- * Compares two already extracted texts.
- * Minimal payload, safe for Vercel.
+ * Compares N extracted texts using AI.
  */
-export async function compareTextsAction(text1: string, text2: string): Promise<ComparisonReport> {
+export async function compareTextsAction(texts: string[], policyNames: string[]): Promise<ComparisonReport> {
     try {
-        console.log(`[ACTION] Comparing texts of length ${text1.length} and ${text2.length}`);
+        console.log(`[ACTION] Comparing ${texts.length} policy texts.`);
 
-        // AI Analysis Path
         if (process.env.OPENAI_API_KEY) {
             try {
-                console.log("[ACTION] Starting AI analysis with OpenAI...");
-                const [analysis1, analysis2] = await Promise.all([
-                    analyzePolicyWithAI(text1),
-                    analyzePolicyWithAI(text2)
-                ]);
-                console.log("[ACTION] AI analysis complete.");
-                return compareAIAnalyses(analysis1, analysis2);
+                const analyses = await Promise.all(
+                    texts.map(text => analyzePolicyWithAI(text))
+                );
+                return compareAIAnalyses(analyses, policyNames);
             } catch (error) {
                 console.error("[ACTION] AI Analysis failed:", error);
-                console.log("[ACTION] Falling back to classic extraction logic...");
+                throw new Error("El análisis de IA falló en una o más pólizas.");
             }
+        } else {
+            throw new Error("OPENAI_API_KEY no configurada.");
         }
-
-        // Classic Regex Path
-        return comparePolicies(text1, text2);
     } catch (error) {
-        console.error("[ACTION] Fatal error in comparison:", error);
+        console.error("[ACTION] Error in comparison:", error);
         throw new Error(error instanceof Error ? error.message : "Error al comparar los textos.");
     }
-}
-
-// Keep the old one for compatibility until UI is updated
-export async function processAndComparePDFs(formData: FormData): Promise<ComparisonReport> {
-    const file1 = formData.get('file1') as File;
-    const file2 = formData.get('file2') as File;
-
-    const buffer1 = Buffer.from(await file1.arrayBuffer());
-    const buffer2 = Buffer.from(await file2.arrayBuffer());
-
-    const text1 = await extractTextFromPDF(buffer1);
-    const text2 = await extractTextFromPDF(buffer2);
-
-    return compareTextsAction(text1, text2);
 }
