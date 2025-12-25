@@ -1,16 +1,25 @@
 export async function extractTextFromPDF(buffer: Buffer): Promise<string> {
     try {
         // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
-        const pdf = require('pdf-parse');
+        const { PdfReader } = require('pdfreader');
 
-        // pdf-parse v1 is a function that returns a promise
-        const data = await pdf(buffer);
-
-        console.log(`DEBUG: Extracted text length: ${data.text.length}`);
-
-        return data.text;
+        return new Promise((resolve, reject) => {
+            let extractedText = "";
+            new PdfReader().parseBuffer(buffer, (err: any, item: any) => {
+                if (err) {
+                    console.error("Error parsing PDF with pdfreader:", err);
+                    reject(new Error("Failed to parse PDF with pdfreader: " + err.message));
+                } else if (!item) {
+                    // End of file
+                    console.log(`DEBUG: Extracted text length: ${extractedText.length}`);
+                    resolve(extractedText);
+                } else if (item.text) {
+                    extractedText += item.text + " ";
+                }
+            });
+        });
     } catch (error) {
-        console.error("Error parsing PDF FULL ERROR:", error);
-        throw new Error("Failed to parse PDF: " + (error instanceof Error ? error.message : String(error)));
+        console.error("Error initializing pdfreader:", error);
+        throw new Error("Failed to initialize pdfreader: " + (error instanceof Error ? error.message : String(error)));
     }
 }
