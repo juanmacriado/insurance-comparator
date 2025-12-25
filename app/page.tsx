@@ -104,14 +104,15 @@ export default function Home() {
         <div className="flex flex-col items-center mb-16 animate-in fade-in duration-1000">
           <h1 className="text-6xl md:text-7xl font-black mb-6 tracking-tighter text-[#16313a] text-center leading-[0.9]">
             Comparador <br />
-            <span className="text-white bg-[#16313a] px-6 py-2 rounded-[30px] inline-block mt-4 shadow-2xl">Inteligente</span>
+            {/* User request: Highlight in Yellow background */}
+            <span className="text-[#16313a] bg-[#ffe008] px-6 py-2 rounded-[30px] inline-block mt-4 shadow-xl">Inteligente</span>
           </h1>
           <p className="text-[#16313a]/40 text-lg uppercase tracking-[0.3em] font-black text-center">
             Análisis de Pólizas con IA
           </p>
         </div>
 
-        {/* Step Indicator - Fixed Contrast */}
+        {/* Step Indicator - User request: Active steps in Yellow background */}
         <div className="flex justify-center mb-20">
           <div className="flex items-center gap-2 md:gap-4 bg-gray-100 p-2 rounded-[25px] border border-gray-200 shadow-inner">
             <StepDot num={1} active={step >= 1} label="Cliente" onClick={() => step > 1 && setStep(1)} />
@@ -123,7 +124,7 @@ export default function Home() {
         </div>
 
         {error && (
-          <div className="max-w-md mx-auto mb-10 bg-red-50 border-2 border-red-100 text-[#16313a] px-8 py-5 rounded-3xl text-center font-bold shadow-lg animate-in zoom-in-95">
+          <div className="max-w-md mx-auto mb-10 bg-red-50 border-2 border-red-100 text-[#16313a] px-8 py-5 rounded-3xl text-center font-bold shadow-lg">
             {error}
           </div>
         )}
@@ -139,7 +140,7 @@ export default function Home() {
                     type="text"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Ej. Análisis Corporativo"
+                    placeholder="Ej. Indra Sistemas"
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-6 text-2xl focus:outline-none focus:border-[#ffe008] transition-all text-[#16313a] font-black"
                   />
                 </div>
@@ -151,7 +152,7 @@ export default function Home() {
                     className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-7 text-3xl focus:outline-none focus:border-[#ffe008] transition-all appearance-none cursor-pointer text-[#16313a] font-black"
                   >
                     {[1, 2, 3, 4, 5].map(n => (
-                      <option key={n} value={n} className="bg-white">{n} Propuesta{n > 1 ? 's' : ''}</option>
+                      <option key={n} value={n} className="bg-white font-bold text-[#16313a]">{n} Propuesta{n > 1 ? 's' : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -172,7 +173,7 @@ export default function Home() {
             <div className="text-center mb-16">
               <h2 className="text-4xl font-black text-[#16313a] mb-2 tracking-tight">Carga de Documentos</h2>
               <p className="text-[#16313a]/40 font-black uppercase tracking-[0.4em]">
-                Cliente: <span className="text-[#16313a] border-b-2 border-[#ffe008]">{clientName}</span>
+                Analizando <span className="text-[#16313a] border-b-4 border-[#ffe008]">{clientName}</span>
               </p>
             </div>
 
@@ -181,12 +182,12 @@ export default function Home() {
             <div className="flex justify-center flex-col items-center gap-8 mt-16">
               <button
                 onClick={handleCompare}
-                className="btn-xeoris text-3xl px-20 py-8"
+                className="btn-xeoris text-3xl px-24 py-8"
                 disabled={files.filter(f => f !== null).length === 0}
               >
                 Analizar con IA
               </button>
-              <button onClick={() => setStep(1)} className="text-[#16313a]/40 hover:text-[#16313a] text-sm font-black uppercase tracking-widest transition-all">Volver</button>
+              <button onClick={() => setStep(1)} className="text-[#16313a]/40 hover:text-[#16313a] text-sm font-black uppercase tracking-widest transition-all">Cancelar y Volver</button>
             </div>
           </div>
         )}
@@ -208,9 +209,9 @@ export default function Home() {
             <div className="flex justify-center mt-12 mb-24">
               <button
                 onClick={() => setStep(1)}
-                className="bg-[#16313a] text-white hover:bg-black font-black py-4 px-12 rounded-[15px] transition-all shadow-xl uppercase tracking-widest text-xs"
+                className="bg-[#16313a] text-[#ffe008] hover:bg-black font-black py-5 px-16 rounded-[15px] transition-all shadow-xl uppercase tracking-widest text-sm"
               >
-                Nueva Comparativa
+                Nueva Comparativa Global
               </button>
             </div>
           </div>
@@ -227,17 +228,17 @@ function StepDot({ num, active, label, onClick }: { num: number, active: boolean
       disabled={!onClick}
       className={cn(
         "flex items-center gap-2 md:gap-3 px-6 py-2.5 rounded-[15px] transition-all whitespace-nowrap",
-        active ? "bg-[#16313a] shadow-xl scale-105" : "bg-white/50 text-[#16313a]/30",
+        active ? "bg-[#ffe008] shadow-lg scale-105" : "bg-white/50 text-[#16313a]/30",
         onClick && !active && "hover:bg-white hover:text-[#16313a]"
       )}
     >
       <span className={cn(
         "w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black transition-colors",
-        active ? "bg-[#ffe008] text-[#16313a]" : "bg-gray-200 text-gray-400"
+        active ? "bg-[#16313a] text-[#ffe008]" : "bg-gray-200 text-gray-400"
       )}>{num}</span>
       <span className={cn(
         "text-[10px] uppercase tracking-widest font-black transition-colors",
-        active ? "text-white" : "text-gray-400"
+        active ? "text-[#16313a]" : "text-gray-400"
       )}>{label}</span>
     </button>
   );

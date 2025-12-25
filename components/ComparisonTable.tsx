@@ -14,14 +14,14 @@ export function ComparisonTable({ report, clientName }: ComparisonTableProps) {
 
     return (
         <div className="bg-white rounded-[40px] shadow-2xl border border-gray-100 overflow-hidden mb-16">
-            {/* Header Block - Fixed Contrast */}
-            <div className="bg-[#16313a] p-12 text-white relative border-b-2 border-[#ffe008]">
+            {/* Header Block - User request: Yellow background instead of dark Petrol */}
+            <div className="bg-[#ffe008] p-12 text-[#16313a] relative border-b-2 border-[#16313a]/10">
                 <div className="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
                     <div className="text-center md:text-left">
-                        <h2 className="text-4xl md:text-5xl font-black mb-3 tracking-tighter text-white uppercase italic leading-none">{title}</h2>
+                        <h2 className="text-4xl md:text-5xl font-black mb-3 tracking-tighter text-[#16313a] uppercase italic leading-none">{title}</h2>
                         <div className="flex items-center gap-4 justify-center md:justify-start">
-                            <div className="h-2 w-20 bg-[#ffe008] rounded-full"></div>
-                            <p className="text-white/60 text-[10px] uppercase tracking-[0.4em] font-black">Estudio Comparativo | Xeoris Global Risk</p>
+                            <div className="h-2 w-20 bg-[#16313a] rounded-full"></div>
+                            <p className="text-[#16313a]/60 text-[10px] uppercase tracking-[0.4em] font-black">Estudio Comparativo | Xeoris Global Risk</p>
                         </div>
                     </div>
                 </div>
@@ -33,9 +33,9 @@ export function ComparisonTable({ report, clientName }: ComparisonTableProps) {
                         <tr className="bg-gray-50 border-b border-gray-100">
                             <th className="p-8 font-black text-[#16313a]/30 uppercase tracking-[0.3em] text-[10px] w-64">Cobertura / Concepto</th>
                             {report.policyNames.map((name, i) => (
-                                <th key={i} className="p-8 font-black text-[#16313a] border-l border-gray-100 bg-white">
+                                <th key={i} className="p-8 font-black text-[#16313a] border-l border-gray-100 bg-white shadow-[inset_0_-2px_0_rgba(22,49,58,0.05)]">
                                     <div className="flex items-center gap-4">
-                                        <div className="bg-[#ffe008] text-[#16313a] w-12 h-12 rounded-[12px] flex items-center justify-center text-sm font-black shadow-lg">
+                                        <div className="bg-[#16313a] text-[#ffe008] w-12 h-12 rounded-[12px] flex items-center justify-center text-sm font-black shadow-lg">
                                             {i + 1}
                                         </div>
                                         <span className="truncate text-lg tracking-tighter uppercase font-black" title={name}>{name}</span>
@@ -55,10 +55,10 @@ export function ComparisonTable({ report, clientName }: ComparisonTableProps) {
                                 )}>
                                     <td className="p-8 bg-gray-50/20">
                                         <div className="flex items-center gap-4">
-                                            {!isPremiumRow && <Shield className="w-6 h-6 text-[#16313a]/5 group-hover:text-[#16313a]/30 transition-colors" />}
+                                            {!isPremiumRow && <Shield className="w-6 h-6 text-[#16313a]/10 group-hover:text-[#16313a]/40 transition-colors" />}
                                             <span className={cn(
                                                 "font-black text-[11px] block uppercase tracking-widest leading-tight",
-                                                isPremiumRow ? "text-[#16313a] py-1 px-3 bg-[#ffe008]/30 rounded-lg inline-block" : "text-[#16313a]"
+                                                isPremiumRow ? "text-[#16313a] py-1 px-3 bg-[#ffe008]/40 rounded-lg inline-block" : "text-[#16313a]"
                                             )}>
                                                 {item.category}
                                             </span>
@@ -81,7 +81,7 @@ export function ComparisonTable({ report, clientName }: ComparisonTableProps) {
                                                 {p.amount !== "N/A" && (
                                                     <div className="flex flex-col gap-1.5">
                                                         <span className="text-[8px] font-black text-[#16313a]/20 uppercase tracking-[0.4em]">Suma Asegurada</span>
-                                                        <span className="text-[#16313a] font-black text-sm bg-[#ffe008] px-5 py-2.5 rounded-[12px] shadow-md inline-block w-fit">
+                                                        <span className="text-[#ffe008] font-black text-sm bg-[#16313a] px-5 py-2.5 rounded-[12px] shadow-md inline-block w-fit">
                                                             {p.amount}
                                                         </span>
                                                     </div>
@@ -89,7 +89,7 @@ export function ComparisonTable({ report, clientName }: ComparisonTableProps) {
                                                 {p.deductible !== "N/A" && (
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[9px] font-black text-[#16313a]/30 uppercase tracking-widest">Franquicia:</span>
-                                                        <span className="text-[13px] font-black text-[#16313a] bg-white border border-gray-100 px-3 py-1 rounded-lg">{p.deductible}</span>
+                                                        <span className="text-[13px] font-black text-[#16313a] bg-gray-50 border border-gray-100 px-3 py-1 rounded-lg">{p.deductible}</span>
                                                     </div>
                                                 )}
                                             </div>
