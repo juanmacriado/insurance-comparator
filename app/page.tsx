@@ -36,8 +36,9 @@ export default function Home() {
       const result = await processAndComparePDFs(formData);
       setReport(result);
     } catch (err) {
-      console.error(err);
-      setError("Hubo un error al procesar los archivos. Asegúrate de que son PDFs válidos y contienen texto.");
+      console.error("DEBUG ERROR:", err);
+      const message = err instanceof Error ? err.message : "Error inesperado";
+      setError(`Error: ${message}. Esto puede deberse a que los archivos son muy grandes o al tiempo de espera de Vercel.`);
     } finally {
       setLoading(false);
     }
