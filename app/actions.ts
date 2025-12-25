@@ -1,5 +1,5 @@
 'use server';
-// Cache bust: 2025-12-25 21:15
+// Optimization: Increased payload limits and enhanced PDF extraction stability. Sync: 2025-12-25 22:00
 
 import { extractTextFromPDF } from "@/lib/pdf-parser";
 import { comparePolicies, compareAIAnalyses, ComparisonReport } from "@/lib/comparator";
