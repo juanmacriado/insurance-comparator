@@ -71,14 +71,14 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-[#0a0f14] text-gray-200 selection:bg-xeoris-yellow selection:text-xeoris-blue">
+    <main className="min-h-screen bg-[#0a0f14] text-xeoris-yellow selection:bg-xeoris-yellow selection:text-xeoris-blue">
       {/* Background patterns */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden h-screen opacity-20">
         <div className="absolute -top-[10%] -left-[10%] w-[40%] h-[40%] bg-xeoris-yellow/10 rounded-full blur-[120px]"></div>
         <div className="absolute top-[40%] -right-[10%] w-[30%] h-[50%] bg-xeoris-blue/20 rounded-full blur-[100px]"></div>
       </div>
 
-      <div className="container mx-auto px-6 py-12 relative z-10 max-w-6xl">
+      <div className="container mx-auto px-6 py-12 relative z-10 max-w-6xl font-medium">
         {/* Header */}
         <div className="flex flex-col items-center mb-16">
           <div className="bg-xeoris-yellow p-3 rounded-2xl mb-6 shadow-[0_0_30px_rgba(255,230,0,0.3)]">
@@ -87,7 +87,7 @@ export default function Home() {
           <h1 className="text-5xl md:text-6xl font-black mb-4 tracking-tighter text-white">
             XEORIS <span className="text-xeoris-yellow">COMPARATOR</span>
           </h1>
-          <p className="text-gray-400 text-lg uppercase tracking-[0.3em] font-bold">
+          <p className="text-xeoris-yellow/60 text-lg uppercase tracking-[0.3em] font-bold">
             Inteligencia Artificial para Ciberseguros
           </p>
         </div>
@@ -96,9 +96,9 @@ export default function Home() {
         <div className="flex justify-center mb-12">
           <div className="flex items-center gap-4 bg-gray-900/50 p-2 rounded-full border border-gray-800">
             <StepDot num={1} active={step >= 1} label="Cliente" onClick={() => step > 1 && setStep(1)} />
-            <ChevronRight className="w-4 h-4 text-gray-700" />
+            <ChevronRight className="w-4 h-4 text-xeoris-yellow/30" />
             <StepDot num={2} active={step >= 2} label="Documentos" onClick={() => step > 2 && setStep(2)} />
-            <ChevronRight className="w-4 h-4 text-gray-700" />
+            <ChevronRight className="w-4 h-4 text-xeoris-yellow/30" />
             <StepDot num={3} active={step >= 3} label="Análisis" />
           </div>
         </div>
@@ -112,7 +112,7 @@ export default function Home() {
         {/* STEP 1: CONFIG */}
         {step === 1 && (
           <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-5 duration-500">
-            <div className="bg-gray-900/40 border border-gray-800 p-8 rounded-3xl backdrop-blur-xl">
+            <div className="bg-gray-900/40 border border-gray-800 p-8 rounded-3xl backdrop-blur-xl shadow-xl">
               <div className="space-y-6">
                 <div>
                   <label className="block text-xs font-black text-xeoris-yellow uppercase tracking-widest mb-3">Nombre de la Empresa / Cliente</label>
@@ -121,7 +121,7 @@ export default function Home() {
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     placeholder="Ej. Multinacional Tecnológica S.A."
-                    className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl px-6 py-4 text-xl focus:outline-none focus:border-xeoris-yellow focus:ring-1 focus:ring-xeoris-yellow transition-all"
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl px-6 py-4 text-xl focus:outline-none focus:border-xeoris-yellow focus:ring-1 focus:ring-xeoris-yellow transition-all text-white placeholder:text-white/20"
                   />
                 </div>
                 <div>
@@ -129,10 +129,10 @@ export default function Home() {
                   <select
                     value={numPolicies}
                     onChange={(e) => setNumPolicies(parseInt(e.target.value))}
-                    className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl px-6 py-4 text-xl focus:outline-none focus:border-xeoris-yellow transition-all appearance-none cursor-pointer"
+                    className="w-full bg-gray-800/50 border border-gray-700 rounded-2xl px-6 py-4 text-xl focus:outline-none focus:border-xeoris-yellow transition-all appearance-none cursor-pointer text-white"
                   >
                     {[1, 2, 3, 4, 5].map(n => (
-                      <option key={n} value={n} className="bg-gray-900">{n} Propuesta{n > 1 ? 's' : ''}</option>
+                      <option key={n} value={n} className="bg-gray-900 text-white">{n} Propuesta{n > 1 ? 's' : ''}</option>
                     ))}
                   </select>
                 </div>
@@ -152,7 +152,7 @@ export default function Home() {
           <div className="animate-in fade-in zoom-in-95 duration-500">
             <div className="text-center mb-10">
               <h2 className="text-3xl font-bold text-white mb-2">Sube tus documentos</h2>
-              <p className="text-gray-400">Preparando comparativa para <span className="text-xeoris-yellow font-bold">{clientName}</span> ({numPolicies} ofertas)</p>
+              <p className="text-xeoris-yellow/70">Preparando comparativa para <span className="text-xeoris-yellow font-bold uppercase tracking-wider">{clientName}</span> ({numPolicies} ofertas)</p>
             </div>
 
             <FileUpload slots={numPolicies} onFilesSelected={handleFilesSelected} />
@@ -165,7 +165,7 @@ export default function Home() {
               >
                 Analizar Coberturas
               </button>
-              <button onClick={() => setStep(1)} className="text-gray-500 hover:text-xeoris-yellow text-sm font-bold uppercase tracking-widest">Atrás</button>
+              <button onClick={() => setStep(1)} className="text-xeoris-yellow/50 hover:text-xeoris-yellow text-sm font-bold uppercase tracking-widest transition-colors">Atrás</button>
             </div>
           </div>
         )}
@@ -178,7 +178,7 @@ export default function Home() {
               <div className="absolute inset-0 bg-xeoris-yellow/20 rounded-full blur-2xl"></div>
             </div>
             <p className="text-2xl font-bold text-white animate-pulse">{loadingMsg}</p>
-            <p className="text-gray-500 mt-4 text-sm">Esto puede tardar unos segundos dependiendo del volumen del PDF.</p>
+            <p className="text-xeoris-yellow/40 mt-4 text-sm font-bold uppercase tracking-widest">Iniciando motores de IA de Xeoris</p>
           </div>
         )}
 
@@ -191,7 +191,7 @@ export default function Home() {
             <div className="flex justify-center mt-12 mb-20">
               <button
                 onClick={() => setStep(1)}
-                className="bg-gray-800 text-white hover:bg-gray-700 font-bold py-3 px-8 rounded-full transition-all border border-gray-700"
+                className="bg-gray-800 text-xeoris-yellow hover:bg-gray-700 font-bold py-3 px-8 rounded-full transition-all border border-gray-700 shadow-lg"
               >
                 Nueva Comparativa
               </button>
@@ -210,13 +210,13 @@ function StepDot({ num, active, label, onClick }: { num: number, active: boolean
       disabled={!onClick}
       className={cn(
         "flex items-center gap-2 px-4 py-1.5 rounded-full transition-all whitespace-nowrap",
-        active ? "bg-xeoris-yellow text-xeoris-blue font-bold shadow-lg" : "text-gray-500",
-        onClick && !active && "hover:text-gray-300"
+        active ? "bg-xeoris-yellow text-xeoris-blue font-bold shadow-lg" : "text-xeoris-yellow/40",
+        onClick && !active && "hover:text-xeoris-yellow"
       )}
     >
       <span className={cn(
         "w-5 h-5 rounded-full flex items-center justify-center text-[10px]",
-        active ? "bg-xeoris-blue text-xeoris-yellow" : "bg-gray-800 text-gray-500"
+        active ? "bg-xeoris-blue text-xeoris-yellow" : "bg-gray-800 text-xeoris-yellow/30"
       )}>{num}</span>
       <span className="text-xs uppercase tracking-tight">{label}</span>
     </button>
