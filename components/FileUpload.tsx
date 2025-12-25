@@ -11,9 +11,19 @@ interface FileUploadProps {
 export function FileUpload({ onFilesSelected }: FileUploadProps) {
     const [file1, setFile1] = useState<File | null>(null);
     const [file2, setFile2] = useState<File | null>(null);
+    const [error, setError] = useState<string | null>(null);
+
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, slot: 1 | 2) => {
         const file = e.target.files?.[0] || null;
+
+        if (file && file.size > MAX_FILE_SIZE) {
+            setError(`El archivo "${file.name}" es demasiado grande. El límite es de 50MB.`);
+            return;
+        }
+
+        setError(null);
         if (slot === 1) {
             setFile1(file);
         } else {
@@ -33,22 +43,29 @@ export function FileUpload({ onFilesSelected }: FileUploadProps) {
     };
 
     return (
-        <div className="grid md:grid-cols-2 gap-8 my-8">
-            {/* Slot 1 */}
-            <UploadSlot
-                file={file1}
-                label="Subir PDF 1"
-                onChange={(e) => handleFileChange(e, 1)}
-                onClear={() => clearFile(1)}
-            />
+        <div className="my-8">
+            {error && (
+                <div className="bg-red-50 text-red-600 p-4 rounded-xl mb-6 text-sm border border-red-100 animate-in fade-in slide-in-from-top-2">
+                    {error}
+                </div>
+            )}
+            <div className="grid md:grid-cols-2 gap-8">
+                {/* Slot 1 */}
+                <UploadSlot
+                    file={file1}
+                    label="Subir PDF 1"
+                    onChange={(e) => handleFileChange(e, 1)}
+                    onClear={() => clearFile(1)}
+                />
 
-            {/* Slot 2 */}
-            <UploadSlot
-                file={file2}
-                label="Subir PDF 2"
-                onChange={(e) => handleFileChange(e, 2)}
-                onClear={() => clearFile(2)}
-            />
+                {/* Slot 2 */}
+                <UploadSlot
+                    file={file2}
+                    label="Subir PDF 2"
+                    onChange={(e) => handleFileChange(e, 2)}
+                    onClear={() => clearFile(2)}
+                />
+            </div>
         </div>
     );
 }
@@ -90,7 +107,7 @@ function UploadSlot({
                         <Upload className="w-8 h-8 text-gray-400 group-hover:text-xeoris-blue" />
                     </div>
                     <span className="text-lg font-medium text-gray-600 mb-1">{label}</span>
-                    <span className="text-sm text-gray-400">PDF (Max 10MB)</span>
+                    <span className="text-sm text-gray-400">PDF (Max 50MB)</span>
                     <input
                         type="file"
                         accept=".pdf"
