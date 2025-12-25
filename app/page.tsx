@@ -8,6 +8,7 @@ import { extractTextAction, compareTextsAction } from './actions';
 import { ComparisonReport } from '@/lib/comparator';
 import { Loader2, ArrowRight, ShieldCheck, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 export default function Home() {
   const [step, setStep] = useState(1);
@@ -63,83 +64,105 @@ export default function Home() {
       setReport(result);
       setStep(3);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error crítico.");
+      setError(err instanceof Error ? err.message : "Error Crítico.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <main className="min-h-screen bg-white text-slate-900 selection:bg-yellow-400 selection:text-black">
-      {/* Soft Background Accent */}
-      <div className="fixed inset-0 pointer-events-none opacity-40">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-100 rounded-full blur-[100px] -mr-48 -mt-48"></div>
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-100 rounded-full blur-[80px] -ml-32 -mb-32"></div>
+    <main className="min-h-screen bg-white text-xeoris-blue selection:bg-xeoris-yellow selection:text-xeoris-blue overflow-x-hidden">
+      {/* Background Graphic from User */}
+      <div className="xeoris-bg-image">
+        <Image
+          src="/background-xeoris.png"
+          alt="Xeoris Background"
+          width={1000}
+          height={800}
+          className="w-full h-auto"
+          priority
+        />
       </div>
 
-      <div className="container mx-auto px-6 py-16 relative z-10 max-w-6xl">
-        {/* Simple Header */}
-        <div className="flex flex-col items-center mb-16">
-          <div className="bg-slate-900 p-4 rounded-2xl mb-6 shadow-lg">
-            <ShieldCheck className="w-12 h-12 text-yellow-400" />
+      {/* Brand Header */}
+      <header className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md z-50 border-b border-gray-100 py-5">
+        <div className="container mx-auto px-6 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="bg-xeoris-blue p-2 rounded-xl shadow-lg">
+              <ShieldCheck className="w-6 h-6 text-xeoris-yellow" />
+            </div>
+            <span className="text-2xl font-black tracking-tighter text-xeoris-blue">XEORIS</span>
           </div>
-          <h1 className="text-5xl md:text-6xl font-black mb-2 tracking-tighter text-slate-900 text-center">
-            XEORIS <span className="bg-yellow-400 px-3 py-1 rounded-xl text-slate-900">COMPARATOR</span>
+          <div className="text-[10px] font-black uppercase tracking-[0.4em] text-xeoris-blue/30 hidden md:block">
+            El Ciberseguro Inteligente
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-6 pt-36 pb-20 relative z-10 max-w-6xl">
+        {/* Hero Section */}
+        <div className="flex flex-col items-center mb-16 animate-in fade-in slide-in-from-top-4 duration-1000">
+          <h1 className="text-6xl md:text-8xl font-black mb-6 tracking-tighter text-xeoris-blue text-center leading-[0.85]">
+            Comparador <br />
+            <span className="text-xeoris-yellow bg-xeoris-blue px-6 py-2 rounded-[30px] inline-block mt-4 shadow-2xl">Inteligente</span>
           </h1>
-          <p className="text-slate-500 text-sm md:text-base font-bold uppercase tracking-[0.2em] mt-2">
-            Inteligencia Artificial para Ciberseguros
+          <p className="text-xeoris-blue/40 text-lg md:text-xl uppercase tracking-[0.4em] font-black text-center mt-4">
+            Análisis de Pólizas con IA
           </p>
         </div>
 
-        {/* High Contrast Step Indicator */}
-        <div className="flex justify-center mb-16">
-          <div className="flex items-center gap-2 md:gap-4 bg-slate-100 p-3 rounded-2xl border border-slate-200">
+        {/* Step Indicator */}
+        <div className="flex justify-center mb-20">
+          <div className="flex items-center gap-4 bg-gray-50/50 backdrop-blur-sm p-2 rounded-[25px] border border-gray-100 shadow-xl">
             <StepDot num={1} active={step >= 1} label="Cliente" onClick={() => step > 1 && setStep(1)} />
-            <ChevronRight className="w-4 h-4 text-slate-300" />
+            <ChevronRight className="w-5 h-5 text-gray-200" />
             <StepDot num={2} active={step >= 2} label="Pólizas" onClick={() => step > 2 && setStep(2)} />
-            <ChevronRight className="w-4 h-4 text-slate-300" />
+            <ChevronRight className="w-5 h-5 text-gray-200" />
             <StepDot num={3} active={step >= 3} label="Resultado" />
           </div>
         </div>
 
         {error && (
-          <div className="max-w-md mx-auto mb-10 bg-red-100 border-2 border-red-200 text-red-700 px-6 py-4 rounded-2xl text-center font-bold">
+          <div className="max-w-md mx-auto mb-10 bg-red-50 border-l-8 border-red-500 text-xeoris-blue px-8 py-6 rounded-2xl text-center font-black shadow-xl animate-in zoom-in-95">
             {error}
           </div>
         )}
 
         {/* STEP 1: CONFIG */}
         {step === 1 && (
-          <div className="max-w-2xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <div className="bg-white border border-slate-200 p-10 rounded-3xl shadow-xl">
-              <div className="space-y-10">
+          <div className="max-w-2xl mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-700">
+            <div className="bg-white border border-gray-100 p-12 rounded-[40px] shadow-[0_30px_100px_-20px_rgba(0,0,0,0.1)] backdrop-blur-xl">
+              <div className="space-y-12">
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 italic">Información del Cliente</label>
+                  <label className="block text-xs font-black text-xeoris-blue uppercase tracking-[0.3em] mb-4 opacity-40 italic">Nombre del Cliente o Proyecto</label>
                   <input
                     type="text"
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
-                    placeholder="Nombre de la empresa..."
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-6 py-5 text-2xl focus:outline-none focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/10 transition-all text-slate-900 font-bold"
+                    placeholder="Ej. Análisis Corporativo 2024"
+                    className="w-full bg-gray-50 border-2 border-slate-100 rounded-[20px] px-8 py-6 text-2xl focus:outline-none focus:border-xeoris-yellow focus:ring-8 focus:ring-xeoris-yellow/5 transition-all text-xeoris-blue font-black placeholder:text-gray-200 shadow-inner"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3 italic">Número de Comparativas</label>
-                  <select
-                    value={numPolicies}
-                    onChange={(e) => setNumPolicies(parseInt(e.target.value))}
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-xl px-6 py-6 text-2xl focus:outline-none focus:border-yellow-400 transition-all appearance-none cursor-pointer text-slate-900 font-black"
-                  >
-                    {[1, 2, 3, 4, 5].map(n => (
-                      <option key={n} value={n} className="bg-white">{n} Propuesta{n > 1 ? 's' : ''}</option>
-                    ))}
-                  </select>
+                  <label className="block text-xs font-black text-xeoris-blue uppercase tracking-[0.3em] mb-4 opacity-40 italic">Número de Propuestas</label>
+                  <div className="relative group">
+                    <select
+                      value={numPolicies}
+                      onChange={(e) => setNumPolicies(parseInt(e.target.value))}
+                      className="w-full bg-gray-50 border-2 border-slate-100 rounded-[20px] px-8 py-7 text-3xl focus:outline-none focus:border-xeoris-yellow transition-all appearance-none cursor-pointer text-xeoris-blue font-black shadow-inner"
+                    >
+                      {[1, 2, 3, 4, 5].map(n => (
+                        <option key={n} value={n} className="bg-white">{n} Propuesta{n > 1 ? 's' : ''}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-8 top-1/2 -translate-y-1/2 pointer-events-none text-xeoris-blue/20 text-sm font-black uppercase tracking-widest group-hover:text-xeoris-yellow transition-colors">Seleccionar</div>
+                  </div>
                 </div>
                 <button
                   onClick={startUploading}
-                  className="w-full bg-slate-900 text-yellow-400 font-black py-5 rounded-2xl text-2xl hover:bg-black transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98]"
+                  className="w-full btn-xeoris text-2xl py-7"
                 >
-                  Siguiente paso <ArrowRight className="w-8 h-8" />
+                  Siguiente paso <ArrowRight className="w-10 h-10 ml-3" />
                 </button>
               </div>
             </div>
@@ -149,24 +172,24 @@ export default function Home() {
         {/* STEP 2: UPLOAD */}
         {step === 2 && !loading && (
           <div className="animate-in fade-in zoom-in-95 duration-500">
-            <div className="text-center mb-12">
-              <h2 className="text-4xl font-black text-slate-900 mb-2">Sube los documentos</h2>
-              <p className="text-slate-500 font-bold uppercase tracking-widest flex items-center justify-center gap-2">
-                Comparativa para <span className="text-slate-900 underline decoration-yellow-400 decoration-4">{clientName}</span>
+            <div className="text-center mb-16">
+              <h2 className="text-5xl font-black text-xeoris-blue mb-3 tracking-tighter">Carga de Documentos</h2>
+              <p className="text-xeoris-blue/40 font-black uppercase tracking-[0.4em] text-sm">
+                Analizando <span className="text-xeoris-blue border-b-4 border-xeoris-yellow">{clientName}</span>
               </p>
             </div>
 
             <FileUpload slots={numPolicies} onFilesSelected={handleFilesSelected} />
 
-            <div className="flex justify-center flex-col items-center gap-6 mt-12">
+            <div className="flex justify-center flex-col items-center gap-8 mt-16">
               <button
                 onClick={handleCompare}
-                className="bg-yellow-400 text-slate-900 font-black py-6 px-20 rounded-2xl text-2xl hover:bg-yellow-500 transition-all shadow-xl hover:scale-105 active:scale-95 disabled:opacity-30 disabled:scale-100"
+                className="btn-xeoris text-3xl px-24 py-8 shadow-[0_25px_60px_-15px_rgba(255,224,8,0.5)]"
                 disabled={files.filter(f => f !== null).length === 0}
               >
-                Ejecutar Análisis
+                Analizar con Xeoris AI
               </button>
-              <button onClick={() => setStep(1)} className="text-slate-400 hover:text-slate-900 text-sm font-black uppercase tracking-widest border-b border-transparent hover:border-slate-900 transition-all">Regresar</button>
+              <button onClick={() => setStep(1)} className="text-xeoris-blue/30 hover:text-xeoris-blue text-sm font-black uppercase tracking-widest transition-all hover:bg-gray-100 px-8 py-3 rounded-full border border-transparent hover:border-gray-200">Volver al inicio</button>
             </div>
           </div>
         )}
@@ -174,24 +197,27 @@ export default function Home() {
         {/* LOADING STATE */}
         {loading && (
           <div className="flex flex-col items-center py-24 animate-in fade-in">
-            <Loader2 className="w-20 h-20 text-yellow-400 animate-spin mb-10" />
-            <p className="text-3xl font-black text-slate-900 animate-pulse">{loadingMsg}</p>
-            <p className="text-slate-400 mt-4 text-xs font-bold uppercase tracking-[0.5em]">Xeoris Global Risk AI</p>
+            <div className="bg-xeoris-blue p-10 rounded-[50px] shadow-3xl relative mb-14 animate-pulse">
+              <ShieldCheck className="w-20 h-20 text-xeoris-yellow" />
+              <div className="absolute inset-0 bg-xeoris-yellow/30 rounded-[50px] blur-[80px] opacity-50"></div>
+            </div>
+            <p className="text-4xl font-black text-xeoris-blue tracking-tighter animate-bounce">{loadingMsg}</p>
+            <p className="text-xeoris-blue/20 mt-6 text-[10px] font-black uppercase tracking-[1em]">Seguridad & Inteligencia Artificial</p>
           </div>
         )}
 
         {/* STEP 3: RESULT */}
         {step === 3 && report && (
-          <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+          <div className="animate-in fade-in slide-in-from-bottom-10 duration-1000">
             <ComparisonTable report={report} clientName={clientName} />
             <PDFGenerator report={report} clientName={clientName} />
 
-            <div className="flex justify-center mt-12 mb-20">
+            <div className="flex justify-center mt-16 mb-24">
               <button
                 onClick={() => setStep(1)}
-                className="bg-slate-100 text-slate-900 hover:bg-slate-200 font-black py-4 px-12 rounded-2xl transition-all border border-slate-300 shadow-sm uppercase tracking-widest text-xs"
+                className="bg-xeoris-blue text-white hover:bg-black font-black py-5 px-16 rounded-[25px] transition-all shadow-2xl uppercase tracking-[0.2em] text-sm hover:scale-105 active:scale-95"
               >
-                Hacer Nueva Comparativa
+                Nueva Comparativa Global
               </button>
             </div>
           </div>
@@ -207,16 +233,16 @@ function StepDot({ num, active, label, onClick }: { num: number, active: boolean
       onClick={onClick}
       disabled={!onClick}
       className={cn(
-        "flex items-center gap-2 px-6 py-2 rounded-xl transition-all whitespace-nowrap",
-        active ? "bg-slate-900 text-white font-black shadow-md" : "text-slate-400",
-        onClick && !active && "hover:text-slate-900 hover:bg-white"
+        "flex items-center gap-3 px-8 py-3 rounded-[20px] transition-all whitespace-nowrap",
+        active ? "bg-xeoris-blue text-white font-black shadow-2xl scale-105" : "text-gray-300",
+        onClick && !active && "hover:text-xeoris-blue hover:bg-white"
       )}
     >
       <span className={cn(
-        "w-6 h-6 rounded-md flex items-center justify-center text-xs font-black",
-        active ? "bg-yellow-400 text-slate-900" : "bg-slate-200 text-slate-400"
+        "w-7 h-7 rounded-xl flex items-center justify-center text-xs font-black",
+        active ? "bg-xeoris-yellow text-xeoris-blue" : "bg-gray-100 text-gray-300"
       )}>{num}</span>
-      <span className="text-xs uppercase tracking-tighter">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.1em]">{label}</span>
     </button>
   );
 }

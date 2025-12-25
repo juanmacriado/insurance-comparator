@@ -40,9 +40,9 @@ export function FileUpload({ slots, onFilesSelected }: FileUploadProps) {
     };
 
     return (
-        <div className="my-10 max-w-5xl mx-auto px-4">
+        <div className="my-10 max-w-6xl mx-auto px-4">
             <div className={cn(
-                "grid gap-6",
+                "grid gap-8",
                 slots === 1 ? "grid-cols-1 max-w-sm mx-auto" :
                     slots === 2 ? "grid-cols-1 sm:grid-cols-2" :
                         "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5"
@@ -74,32 +74,32 @@ function UploadSlot({
 }) {
     return (
         <div className={cn(
-            "group relative border-2 border-dashed rounded-[1.5rem] p-6 flex flex-col items-center justify-center transition-all duration-300 min-h-[140px]",
+            "group relative border-2 border-dashed rounded-[25px] p-8 flex flex-col items-center justify-center transition-all duration-500 min-h-[160px]",
             file
-                ? "border-slate-900 bg-slate-50 shadow-md"
-                : "border-slate-200 bg-white hover:border-yellow-400 hover:bg-yellow-50/30"
+                ? "border-xeoris-blue bg-white shadow-2xl scale-[1.02]"
+                : "border-gray-100 bg-gray-50/50 hover:border-xeoris-yellow hover:bg-white hover:shadow-lg"
         )}>
             {file ? (
                 <div className="text-center w-full">
-                    <div className="bg-slate-900 text-yellow-400 w-10 h-10 rounded-xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                        <FileText className="w-5 h-5" />
+                    <div className="bg-xeoris-blue text-xeoris-yellow w-12 h-12 rounded-[15px] flex items-center justify-center mx-auto mb-4 shadow-xl rotate-3">
+                        <FileText className="w-6 h-6" />
                     </div>
-                    <p className="text-[11px] font-black text-slate-900 truncate max-w-[120px] mx-auto mb-1 uppercase tracking-tighter">
+                    <p className="text-[11px] font-black text-xeoris-blue truncate max-w-[140px] mx-auto mb-1 uppercase tracking-tighter">
                         {file.name}
                     </p>
                     <button
                         onClick={onClear}
-                        className="p-1.5 bg-red-600 text-white rounded-full hover:bg-red-700 transition-colors absolute -top-2 -right-2 shadow-lg border-2 border-white"
+                        className="p-2 bg-red-600 text-white rounded-full hover:bg-black transition-all absolute -top-3 -right-3 shadow-xl border-4 border-white"
                     >
-                        <X className="w-3.5 h-3.5" />
+                        <X className="w-4 h-4" />
                     </button>
                 </div>
             ) : (
-                <label className="cursor-pointer text-center w-full h-full flex flex-col items-center justify-center py-4">
-                    <div className="bg-slate-100 text-slate-400 w-10 h-10 rounded-xl flex items-center justify-center mb-3 transition-all group-hover:bg-yellow-400 group-hover:text-slate-900 shadow-inner">
-                        <Upload className="w-5 h-5" />
+                <label className="cursor-pointer text-center w-full h-full flex flex-col items-center justify-center py-6">
+                    <div className="bg-white text-gray-200 w-12 h-12 rounded-[15px] flex items-center justify-center mb-4 transition-all group-hover:bg-xeoris-yellow group-hover:text-xeoris-blue shadow-sm border border-gray-50">
+                        <Upload className="w-6 h-6 outline-none" />
                     </div>
-                    <span className="text-[12px] font-black text-slate-400 group-hover:text-slate-900 transition-colors uppercase tracking-[0.2em]">{label}</span>
+                    <span className="text-[12px] font-black text-gray-300 group-hover:text-xeoris-blue transition-colors uppercase tracking-[0.3em] font-serif italic">{label}</span>
                     <input
                         type="file"
                         accept=".pdf"

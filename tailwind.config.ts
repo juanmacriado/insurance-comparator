@@ -12,11 +12,14 @@ const config: Config = {
         background: "var(--background)",
         foreground: "var(--foreground)",
         xeoris: {
-          blue: "#16313a", // Updated from site
-          yellow: "#ffe008", // Updated from site
+          blue: "#16313a", // Precise brand petrol
+          yellow: "#ffe008", // Precise brand yellow
           gray: "#f3f4f6",
         }
       },
+      borderRadius: {
+        'xeoris': '15px', // Brand rounded style
+      }
     },
   },
   plugins: [],
