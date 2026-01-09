@@ -26,7 +26,11 @@ const CATEGORIES = [
     { key: ['equipos', 'hardware', 'daños materiales'], label: 'Protección de Equipos' },
     { key: ['civil', 'tecnológica', 'rc', 'terceros'], label: 'Responsabilidad Tecnológica / Responsabilidad Civil' },
     { key: ['fraude', 'phishing', 'transferencia'], label: 'Fraude Tecnológico' },
-    { key: ['ecrime', 'identidad', 'suplantación'], label: 'Ecrime / Suplantación de Identidad' }
+    { key: ['ecrime', 'identidad', 'suplantación'], label: 'Ecrime / Suplantación de Identidad' },
+    { key: ['sanciones', 'multas', 'rgpd', 'regulatorio'], label: 'Sanciones Administrativas / Multas' },
+    { key: ['notificación', 'comunicación', 'afectados'], label: 'Notificación a los afectados' },
+    { key: ['reputación', 'imagen', 'relaciones públicas', 'rp'], label: 'Restitución de la imagen / Reputación' },
+    { key: ['defensa', 'jurídica', 'legal', 'honorarios'], label: 'Defensa Jurídica' }
 ];
 
 export function compareAIAnalyses(analyses: PolicyAnalysis[], policyNames: string[]): ComparisonReport {

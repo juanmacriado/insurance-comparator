@@ -12,7 +12,11 @@ export const CoverageCategories = [
     'Protección de Equipos',
     'Responsabilidad Tecnológica / Responsabilidad Civil',
     'Fraude Tecnológico',
-    'Ecrime / Suplantación de Identidad'
+    'Ecrime / Suplantación de Identidad',
+    'Sanciones Administrativas / Multas',
+    'Notificación a los afectados',
+    'Restitución de la imagen / Reputación',
+    'Defensa Jurídica'
 ] as const;
 
 export type CoverageCategory = typeof CoverageCategories[number];
@@ -64,6 +68,10 @@ export async function analyzePolicyWithAI(text: string): Promise<PolicyAnalysis>
     7. Responsabilidad Tecnológica / Responsabilidad Civil: Demandas de terceros.
     8. Fraude Tecnológico: Transferencias fraudulentas.
     9. Ecrime / Suplantación de Identidad: Phishing activo, robo de identidad.
+    10. Sanciones Administrativas / Multas: Multas regulatorias (RGPD) derivadas de incidentes.
+    11. Notificación a los afectados: Gastos de comunicación a clientes y reguladores.
+    12. Restitución de la imagen / Reputación: Gastos en consultoría de Relaciones Públicas y marketing.
+    13. Defensa Jurídica: Honorarios legales y gastos de defensa ante reclamaciones.
 
     Reglas:
     - RESPONDE SIEMPRE EN ESPAÑOL.
