@@ -132,8 +132,8 @@ export default function Home() {
         {/* STEP 1: CONFIG */}
         {step === 1 && (
           <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-700">
-            <div className="bg-white border border-gray-100 p-12 rounded-[40px] shadow-2xl">
-              <div className="space-y-12">
+            <div className="bg-white border border-gray-100 p-12 rounded-[40px] shadow-2xl flex flex-col items-center text-center">
+              <div className="space-y-12 w-full">
                 <div>
                   <label className="block text-xs font-black text-[#16313a] uppercase tracking-[0.2em] mb-4 opacity-50">Nombre del Cliente</label>
                   <input
@@ -141,7 +141,7 @@ export default function Home() {
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     placeholder="Ej. Indra Sistemas"
-                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-6 text-2xl focus:outline-none focus:border-[#ffe008] transition-all text-[#16313a] font-black"
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-6 text-2xl focus:outline-none focus:border-[#ffe008] transition-all text-[#16313a] font-black text-center"
                   />
                 </div>
                 <div>
@@ -149,10 +149,10 @@ export default function Home() {
                   <select
                     value={numPolicies}
                     onChange={(e) => setNumPolicies(parseInt(e.target.value))}
-                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-7 text-3xl focus:outline-none focus:border-[#ffe008] transition-all appearance-none cursor-pointer text-[#16313a] font-black"
+                    className="w-full bg-gray-50 border-2 border-gray-100 rounded-[15px] px-8 py-7 text-3xl focus:outline-none focus:border-[#ffe008] transition-all appearance-none cursor-pointer text-[#16313a] font-black text-center"
                   >
                     {[1, 2, 3, 4, 5].map(n => (
-                      <option key={n} value={n} className="bg-white font-bold text-[#16313a]">{n} Propuesta{n > 1 ? 's' : ''}</option>
+                      <option key={n} value={n} className="bg-white font-bold text-[#16313a] text-center">{n} Propuesta{n > 1 ? 's' : ''}</option>
                     ))}
                   </select>
                 </div>

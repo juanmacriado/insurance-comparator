@@ -318,19 +318,19 @@ export default function PDFUnifier() {
                     {/* Controls Sidebar */}
                     <div className="relative">
                         <div className="sticky top-28 space-y-8 z-40">
-                            <div className="bg-[#16313a] text-white p-8 rounded-[40px] shadow-2xl border border-white/10 overflow-hidden relative">
+                            <div className="bg-[#16313a] text-white p-8 rounded-[40px] shadow-2xl border border-white/10 overflow-hidden relative flex flex-col items-center text-center">
                                 <div className="absolute top-[-50px] right-[-50px] w-32 h-32 bg-[#ffe008] opacity-10 rounded-full blur-3xl"></div>
 
                                 <h4 className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-[#ffe008]">Ajustes de Salida</h4>
 
-                                <div className="space-y-8">
+                                <div className="space-y-8 w-full">
                                     <div>
                                         <label className="block text-[10px] font-black uppercase tracking-widest mb-4 opacity-40">Nombre del PDF Final</label>
                                         <input
                                             type="text"
                                             value={mergedTitle}
                                             onChange={(e) => setMergedTitle(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-[15px] px-6 py-4 text-white focus:outline-none focus:border-[#ffe008] transition-all font-bold placeholder:text-white/20"
+                                            className="w-full bg-white/5 border border-white/10 rounded-[15px] px-6 py-4 text-white focus:outline-none focus:border-[#ffe008] transition-all font-bold placeholder:text-white/20 text-center"
                                             placeholder="Ej. Propuesta Global"
                                         />
                                     </div>
@@ -358,7 +358,7 @@ export default function PDFUnifier() {
                                 </div>
                             </div>
 
-                            <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl">
+                            <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl text-center">
                                 <h5 className="text-[10px] font-black uppercase tracking-widest mb-6 opacity-40 italic">Instrucciones Rápidas</h5>
                                 <ul className="space-y-4">
                                     {[
@@ -367,7 +367,7 @@ export default function PDFUnifier() {
                                         "Revisa las miniaturas para confirmar.",
                                         "Personaliza el título y descarga."
                                     ].map((text, i) => (
-                                        <li key={i} className="flex gap-3 text-xs font-bold leading-relaxed">
+                                        <li key={i} className="flex flex-col items-center gap-1 text-xs font-bold leading-relaxed">
                                             <span className="text-[#ffe008]">•</span>
                                             {text}
                                         </li>

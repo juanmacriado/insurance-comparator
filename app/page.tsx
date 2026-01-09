@@ -50,15 +50,14 @@ export default function LandingPage() {
                 <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-20">
                     {/* Option: Policy Comparator */}
                     <Link href="/comparator" className="group">
-                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col justify-between">
-                            <div>
-                                <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
-                                    <ClipboardCheck className="w-8 h-8 text-[#16313a]" />
-                                </div>
-                                <h2 className="text-3xl font-black mb-4 tracking-tight">Comparador de Pólizas</h2>
-                                <p className="text-[#16313a]/60 text-lg">Analiza y compara coberturas de ciberseguro con Inteligencia Artificial.</p>
+                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                            <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
+                                <ClipboardCheck className="w-8 h-8 text-[#16313a]" />
                             </div>
-                            <div className="mt-12 flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
+                            <h2 className="text-3xl font-black mb-4 tracking-tight">Comparador de Pólizas</h2>
+                            <p className="text-[#16313a]/60 text-lg mb-12">Analiza y compara coberturas de ciberseguro con Inteligencia Artificial.</p>
+
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
                                 Empezar Análisis <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                             </div>
                         </div>
@@ -66,15 +65,14 @@ export default function LandingPage() {
 
                     {/* Option: PDF Unifier */}
                     <Link href="/unificador" className="group">
-                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col justify-between">
-                            <div>
-                                <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
-                                    <FileStack className="w-8 h-8 text-[#16313a]" />
-                                </div>
-                                <h2 className="text-3xl font-black mb-4 tracking-tight">Unificador de PDF</h2>
-                                <p className="text-[#16313a]/60 text-lg">Une múltiples documentos en un solo PDF de forma rápida y sencilla.</p>
+                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                            <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
+                                <FileStack className="w-8 h-8 text-[#16313a]" />
                             </div>
-                            <div className="mt-12 flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
+                            <h2 className="text-3xl font-black mb-4 tracking-tight">Unificador de PDF</h2>
+                            <p className="text-[#16313a]/60 text-lg mb-12">Une múltiples documentos en un solo PDF de forma rápida y sencilla.</p>
+
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
                                 Unir Documentos <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                             </div>
                         </div>
