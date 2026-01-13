@@ -1,69 +1,56 @@
-import Database from 'better-sqlite3';
-import path from 'path';
 
-const dbPath = path.resolve(process.cwd(), 'comisiones.db');
-const db = new Database(dbPath);
-
-// Initialize schema
-db.exec(`
-  CREATE TABLE IF NOT EXISTS aseguradoras (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    nombre TEXT UNIQUE NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS registros_comisiones (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    aseguradora_id INTEGER NOT NULL,
-    año INTEGER NOT NULL,
-    tipo_registro TEXT NOT NULL, -- 'Producción Anual', 'Producción Mensual', 'Cartera Anual', 'Cartera Mensual'
-    cliente TEXT,
-    situacion TEXT,
-    tipo_pago TEXT,
-    numero_poliza TEXT,
-    fecha_efecto TEXT,
-    pago_hiscox REAL,
-    producto TEXT,
-    prima_neta REAL,
-    prima_total REAL,
-    porcentaje_comision REAL,
-    neto_comision REAL,
-    comprobacion_prima REAL,
-    importe_liquidar REAL,
-    comprobacion_datos REAL,
-    FOREIGN KEY (aseguradora_id) REFERENCES aseguradoras(id)
-  );
-`);
+import { sql } from '@vercel/postgres';
 
 async function getAseguradoras() {
-  return db.prepare('SELECT * FROM aseguradoras ORDER BY nombre ASC').all();
+  const { rows } = await sql`SELECT * FROM aseguradoras ORDER BY nombre ASC`;
+  return rows;
 }
 
-async function addAseguradora(nombre) {
-  const info = db.prepare('INSERT OR IGNORE INTO aseguradoras (nombre) VALUES (?)').run(nombre);
-  if (info.changes === 0) {
-    const row = db.prepare('SELECT id FROM aseguradoras WHERE nombre = ?').get(nombre);
-    return row.id;
+async function addAseguradora(nombre: string) {
+  // Try to insert
+  const result = await sql`
+    INSERT INTO aseguradoras (nombre) VALUES (${nombre})
+    ON CONFLICT (nombre) DO NOTHING
+    RETURNING id
+  `;
+
+  if (result.rows.length > 0) {
+    return result.rows[0].id;
+  } else {
+    // Already exists
+    const existing = await sql`SELECT id FROM aseguradoras WHERE nombre = ${nombre}`;
+    return existing.rows[0].id;
   }
-  return info.lastInsertRowid;
 }
 
 async function getRegistros(aseguradoraId: number, año: number | null = null, tipo: string | null = null) {
-  let query = 'SELECT * FROM registros_comisiones WHERE aseguradora_id = ?';
-  const params: any[] = [aseguradoraId];
+  // Dynamic query construction with vercel postgres is a bit tricky with template literals.
+  // We can't easily concatenate strings. Instead we usually handle logic or use a helper.
+  // For simplicity, we can use conditional logic but sql template literals expect static parts.
+  // Actually, we can just use plain if statements to build the query? 
+  // No, vercel/postgres 'sql' tag is strict.
 
-  if (año) {
-    query += ' AND año = ?';
-    params.push(año);
-  }
-  if (tipo) {
-    query += ' AND tipo_registro = ?';
-    params.push(tipo);
-  }
+  // However, we can fetch all for the insurer and filter in JS if the volume is low, 
+  // OR we can write separate queries.
+  // Given we only have 3 params, let's just be explicit or use a smarter way?
+  // Let's just create the query conditionally.
 
-  return db.prepare(query).all(...params);
+  // Note: Vercel Postgres doesn't support dynamic query building via string concat easily with safety.
+  // But we can filter by logic:
+  // WHERE aseguradora_id = ${id} AND (${año}::int IS NULL OR año = ${año}) ...
+
+  // Let's use that trick (passing null to SQL and checking IS NULL or equal).
+
+  const { rows } = await sql`
+    SELECT * FROM registros_comisiones 
+    WHERE aseguradora_id = ${aseguradoraId}
+    AND (${año}::int IS NULL OR año = ${año})
+    AND (${tipo}::text IS NULL OR tipo_registro = ${tipo})
+  `;
+  return rows;
 }
 
-async function addRegistro(registro) {
+async function addRegistro(registro: any) {
   const pNeta = Number(registro.prima_neta || 0);
   const pTotal = Number(registro.prima_total || 0);
   const pct = Number(registro.porcentaje_comision || 0);
@@ -73,37 +60,26 @@ async function addRegistro(registro) {
   const compPrima = (pNeta * (pct / 100)) - neto;
   const compDatos = (pTotal - (pNeta * (pct / 100))) - impLiq;
 
-  const stmt = db.prepare(`
+  const result = await sql`
     INSERT INTO registros_comisiones (
       aseguradora_id, año, tipo_registro, cliente, situacion, tipo_pago, 
       numero_poliza, fecha_efecto, pago_hiscox, producto, prima_neta, 
       prima_total, porcentaje_comision, neto_comision, comprobacion_prima,
       importe_liquidar, comprobacion_datos
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  return stmt.run(
-    registro.aseguradora_id,
-    registro.año,
-    registro.tipo_registro,
-    registro.cliente,
-    registro.situacion,
-    registro.tipo_pago,
-    registro.numero_poliza,
-    registro.fecha_efecto,
-    registro.pago_hiscox,
-    registro.producto,
-    registro.prima_neta,
-    registro.prima_total,
-    registro.porcentaje_comision,
-    registro.neto_comision,
-    compPrima, // Calculated
-    registro.importe_liquidar,
-    compDatos // Calculated
-  );
+    ) VALUES (
+      ${registro.aseguradora_id}, ${registro.año}, ${registro.tipo_registro}, 
+      ${registro.cliente}, ${registro.situacion}, ${registro.tipo_pago}, 
+      ${registro.numero_poliza}, ${registro.fecha_efecto}, ${registro.pago_hiscox}, 
+      ${registro.producto}, ${registro.prima_neta}, ${registro.prima_total}, 
+      ${registro.porcentaje_comision}, ${registro.neto_comision}, ${compPrima}, 
+      ${registro.importe_liquidar}, ${compDatos}
+    )
+    RETURNING id
+  `;
+  return { lastInsertRowid: result.rows[0].id };
 }
 
-async function updateRegistro(id, registro) {
+async function updateRegistro(id: number, registro: any) {
   const pNeta = Number(registro.prima_neta || 0);
   const pTotal = Number(registro.prima_total || 0);
   const pct = Number(registro.porcentaje_comision || 0);
@@ -113,44 +89,41 @@ async function updateRegistro(id, registro) {
   const compPrima = (pNeta * (pct / 100)) - neto;
   const compDatos = (pTotal - (pNeta * (pct / 100))) - impLiq;
 
-  const stmt = db.prepare(`
+  await sql`
     UPDATE registros_comisiones SET
-      cliente = ?, situacion = ?, tipo_pago = ?, numero_poliza = ?, 
-      fecha_efecto = ?, pago_hiscox = ?, producto = ?, prima_neta = ?, 
-      prima_total = ?, porcentaje_comision = ?, neto_comision = ?, 
-      comprobacion_prima = ?, importe_liquidar = ?, comprobacion_datos = ?
-    WHERE id = ?
-  `);
-
-  return stmt.run(
-    registro.cliente,
-    registro.situacion,
-    registro.tipo_pago,
-    registro.numero_poliza,
-    registro.fecha_efecto,
-    registro.pago_hiscox,
-    registro.producto,
-    registro.prima_neta,
-    registro.prima_total,
-    registro.porcentaje_comision,
-    registro.neto_comision,
-    compPrima, // Calculated
-    registro.importe_liquidar,
-    compDatos, // Calculated
-    id
-  );
+      cliente = ${registro.cliente},
+      situacion = ${registro.situacion},
+      tipo_pago = ${registro.tipo_pago},
+      numero_poliza = ${registro.numero_poliza},
+      fecha_efecto = ${registro.fecha_efecto},
+      pago_hiscox = ${registro.pago_hiscox},
+      producto = ${registro.producto},
+      prima_neta = ${registro.prima_neta},
+      prima_total = ${registro.prima_total},
+      porcentaje_comision = ${registro.porcentaje_comision},
+      neto_comision = ${registro.neto_comision},
+      comprobacion_prima = ${compPrima},
+      importe_liquidar = ${registro.importe_liquidar},
+      comprobacion_datos = ${compDatos}
+    WHERE id = ${id}
+  `;
 }
 
-async function deleteRegistro(id) {
-  return db.prepare('DELETE FROM registros_comisiones WHERE id = ?').run(id);
+async function deleteRegistro(id: number) {
+  await sql`DELETE FROM registros_comisiones WHERE id = ${id}`;
+}
+
+async function deleteRegistrosByYear(year: number) {
+  await sql`DELETE FROM registros_comisiones WHERE año = ${year}`;
 }
 
 export {
-  db,
+  sql, // exporting sql client just in case
   getAseguradoras,
   addAseguradora,
   getRegistros,
   addRegistro,
   updateRegistro,
-  deleteRegistro
+  deleteRegistro,
+  deleteRegistrosByYear
 };
