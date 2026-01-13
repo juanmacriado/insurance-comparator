@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck, ArrowRight, FileStack, ClipboardCheck } from 'lucide-react';
+import { ShieldCheck, ArrowRight, FileStack, ClipboardCheck, Percent } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -47,17 +47,17 @@ export default function LandingPage() {
                     </p>
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-8 max-w-4xl mx-auto mt-20">
+                <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto mt-20">
                     {/* Option: Policy Comparator */}
                     <Link href="/comparator" className="group">
-                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                        <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
                             <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
                                 <ClipboardCheck className="w-8 h-8 text-[#16313a]" />
                             </div>
-                            <h2 className="text-3xl font-black mb-4 tracking-tight">Comparador de Pólizas</h2>
-                            <p className="text-[#16313a]/60 text-lg mb-12">Analiza y compara coberturas de ciberseguro con Inteligencia Artificial.</p>
+                            <h2 className="text-2xl font-black mb-4 tracking-tight">Comparador de Pólizas</h2>
+                            <p className="text-[#16313a]/60 text-base mb-12">Analiza y compara coberturas de ciberseguro con Inteligencia Artificial.</p>
 
-                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
                                 Empezar Análisis <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                             </div>
                         </div>
@@ -65,15 +65,30 @@ export default function LandingPage() {
 
                     {/* Option: PDF Unifier */}
                     <Link href="/unificador" className="group">
-                        <div className="bg-white border-2 border-gray-100 p-10 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                        <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
                             <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
                                 <FileStack className="w-8 h-8 text-[#16313a]" />
                             </div>
-                            <h2 className="text-3xl font-black mb-4 tracking-tight">Unificador de PDF</h2>
-                            <p className="text-[#16313a]/60 text-lg mb-12">Une múltiples documentos en un solo PDF de forma rápida y sencilla.</p>
+                            <h2 className="text-2xl font-black mb-4 tracking-tight">Unificador de PDF</h2>
+                            <p className="text-[#16313a]/60 text-base mb-12">Une múltiples documentos en un solo PDF de forma rápida y sencilla.</p>
 
-                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-sm">
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
                                 Unir Documentos <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                            </div>
+                        </div>
+                    </Link>
+
+                    {/* Option: Commission Management */}
+                    <Link href="/comisiones" className="group">
+                        <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                            <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
+                                <Percent className="w-8 h-8 text-[#16313a]" />
+                            </div>
+                            <h2 className="text-2xl font-black mb-4 tracking-tight">Gestión de Comisiones</h2>
+                            <p className="text-[#16313a]/60 text-base mb-12">Administra los porcentajes de comisión y acuerdos con aseguradoras.</p>
+
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
+                                Gestionar Acuerdos <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                             </div>
                         </div>
                     </Link>
