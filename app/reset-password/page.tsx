@@ -1,13 +1,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { resetPassword } from '@/lib/password-actions';
 import { Lock, CheckCircle } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-export default function ResetPasswordPage() {
+function ResetPasswordContent() {
     const searchParams = useSearchParams();
     const token = searchParams.get('token');
     const [error, setError] = useState<string | null>(null);
@@ -108,5 +108,13 @@ export default function ResetPasswordPage() {
                 )}
             </div>
         </div>
+    );
+}
+
+export default function ResetPasswordPage() {
+    return (
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-gray-50">Cargando...</div>}>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }
