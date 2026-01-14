@@ -26,7 +26,7 @@ export async function forgotPassword(formData: FormData) {
     // 3. Store token
     // First clean up old tokens
     await sql`DELETE FROM password_resets WHERE email=${email}`;
-    await sql`INSERT INTO password_resets (email, token, expires_at) VALUES (${email}, ${token}, ${expiresAt})`;
+    await sql`INSERT INTO password_resets (email, token, expires_at) VALUES (${email}, ${token}, ${expiresAt.toISOString()})`;
 
     // 4. Send Email
     // In dev mode, we log the link. In prod, use Resend/Nodemailer.
