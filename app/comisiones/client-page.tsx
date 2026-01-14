@@ -468,6 +468,15 @@ export default function ComisionesClientPage() {
                                 <h2 className="text-3xl font-black tracking-tighter uppercase">{selectedCategory}</h2>
                             </div>
                             <div className="flex gap-3">
+                                <button
+                                    onClick={() => {
+                                        setIsAddingNew(true);
+                                        setEditingData({});
+                                    }}
+                                    className="bg-[#16313a] text-[#ffe008] px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
+                                >
+                                    <Plus className="w-4 h-4" /> Nuevo Registro
+                                </button>
                                 <button className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all">
                                     <Filter className="w-5 h-5" />
                                 </button>
@@ -610,21 +619,6 @@ export default function ComisionesClientPage() {
                     </div>
                 )}
             </div>
-            {/* Floating Actions */}
-            {!isSettlementView && (
-                <div className="fixed bottom-10 right-10 flex flex-col gap-4 z-50">
-                    <button
-                        onClick={() => {
-                            setIsAddingNew(true);
-                            setEditingData({});
-                            window.scrollTo({ top: 0, behavior: 'smooth' });
-                        }}
-                        className="bg-[#ffe008] text-[#16313a] w-16 h-16 rounded-[24px] shadow-2xl flex items-center justify-center hover:scale-110 hover:rotate-90 transition-all duration-500 border-4 border-white active:scale-95"
-                    >
-                        <Plus className="w-8 h-8" />
-                    </button>
-                </div>
-            )}
         </main>
     );
 }
