@@ -42,3 +42,4 @@ La forma más rápida de desplegar es usando [Vercel](https://vercel.com):
 
 ---
 Desarrollado para Xeoris - Ciberseguridad Inteligente.
+ 
