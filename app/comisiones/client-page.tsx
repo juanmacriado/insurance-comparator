@@ -168,6 +168,37 @@ export default function ComisionesClientPage() {
         'Producción'
     ];
 
+    function handleExportData() {
+        if (!selectedAseguradora) return;
+
+        const dataToExport = registros.map(reg => ({
+            'Cliente': reg.cliente,
+            'Situación': reg.situacion,
+            'Tipo de Pago': reg.tipo_pago,
+            'Nº Póliza': reg.numero_poliza,
+            'Fecha Efecto': formatDate(reg.fecha_efecto),
+            'Pago Asegurador': reg.pago_hiscox,
+            'Producto': reg.producto,
+            'Prima Neta': reg.prima_neta,
+            'Prima Total': reg.prima_total,
+            '% Comisión': reg.porcentaje_comision,
+            'Neto Comisión': reg.neto_comision,
+            'Comp. Prima': reg.comprobacion_prima,
+            'Importe a Liquidar': reg.importe_liquidar,
+            'Comp. Datos': reg.comprobacion_datos
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Datos");
+
+        // Sanitize filename
+        const safeName = selectedAseguradora.nombre.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const safeCategory = selectedCategory.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
+        XLSX.writeFile(wb, `${safeName}_${safeCategory}_${selectedYear}.xlsx`);
+    }
+
     return (
         <main className="min-h-screen bg-[#f8fafb] text-[#16313a] selection:bg-[#ffe008] selection:text-[#16313a]">
             {/* Header */}
@@ -393,7 +424,7 @@ export default function ComisionesClientPage() {
                                         <tr className="bg-gray-50 border-b border-gray-100">
                                             {[
                                                 'Mes Liq.', 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Pago Hiscox', 'Producto', 'Prima Neta', 'Prima Total',
+                                                'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
                                                 '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
                                             ].map(h => (
                                                 <th key={h} className="px-4 py-4 text-[8px] font-black uppercase tracking-widest text-[#16313a]/40 whitespace-nowrap bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]">{h}</th>
@@ -480,7 +511,11 @@ export default function ComisionesClientPage() {
                                 <button className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all">
                                     <Filter className="w-5 h-5" />
                                 </button>
-                                <button className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all">
+                                <button
+                                    onClick={handleExportData}
+                                    className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all text-[#16313a] hover:bg-gray-50"
+                                    title="Descargar Excel"
+                                >
                                     <Download className="w-5 h-5" />
                                 </button>
                             </div>
@@ -514,7 +549,7 @@ export default function ComisionesClientPage() {
                                             <th className="w-8 bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]"></th>
                                             {[
                                                 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Pago Hiscox', 'Producto', 'Prima Neta', 'Prima Total',
+                                                'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
                                                 '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
                                             ].map(h => (
                                                 <th key={h} className="px-4 py-4 text-[8px] font-black uppercase tracking-widest text-[#16313a]/40 whitespace-nowrap bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]">{h}</th>
@@ -659,7 +694,7 @@ const FormFields = ({ data, onChange }: { data: any, onChange: (newData: any) =>
                 <input type="date" value={data.fecha_efecto || ''} onChange={(e) => handleChange('fecha_efecto', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
             </div>
             <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Pago Hiscox</label>
+                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Pago Asegurador</label>
                 <input type="number" step="0.01" value={data.pago_hiscox || 0} onChange={(e) => handleChange('pago_hiscox', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
             </div>
             <div className="flex flex-col gap-1">
@@ -689,7 +724,7 @@ const FormFields = ({ data, onChange }: { data: any, onChange: (newData: any) =>
                 </div>
             </div>
             <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Liq. Hiscox</label>
+                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Liq. Aseguradora</label>
                 <input type="number" step="0.01" value={data.importe_liquidar || 0} onChange={(e) => handleChange('importe_liquidar', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
             </div>
             <div className="flex flex-col gap-1">
