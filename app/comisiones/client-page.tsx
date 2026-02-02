@@ -51,14 +51,54 @@ export default function ComisionesClientPage() {
         setView('DASHBOARD');
     }
 
+    const [showFilters, setShowFilters] = useState(false);
+    const [filters, setFilters] = useState({
+        cliente: '',
+        situacion: '',
+        tipo_pago: '',
+        numero_poliza: '',
+        fecha_efecto: '',
+        pago_hiscox: '',
+        producto: ''
+    });
+
+    const filteredRegistros = registros.filter(reg => {
+        const matches = (field: string, value: string) => {
+            if (!value) return true;
+            const regValue = String(reg[field] || '').toLowerCase();
+            return regValue.includes(value.toLowerCase());
+        };
+
+        return (
+            matches('cliente', filters.cliente) &&
+            matches('situacion', filters.situacion) &&
+            matches('tipo_pago', filters.tipo_pago) &&
+            matches('numero_poliza', filters.numero_poliza) &&
+            matches('fecha_efecto', filters.fecha_efecto) &&
+            matches('pago_hiscox', filters.pago_hiscox) &&
+            matches('producto', filters.producto)
+        );
+    });
+
     async function handleSelectCategory(cat: string) {
         setSelectedCategory(cat);
         setLoading(true);
-        const data = await fetchRegistros(selectedAseguradora.id, selectedYear, cat);
+        // Fetch ALL records (year = null)
+        const data = await fetchRegistros(selectedAseguradora.id, null, cat);
         setRegistros(data);
         setView('DETAILS');
         setLoading(false);
         setExpandedRow(null);
+        // Reset filters when changing category
+        setFilters({
+            cliente: '',
+            situacion: '',
+            tipo_pago: '',
+            numero_poliza: '',
+            fecha_efecto: '',
+            pago_hiscox: '',
+            producto: ''
+        });
     }
 
     async function handleSaveRow(id: number) {
@@ -171,7 +211,7 @@ export default function ComisionesClientPage() {
     function handleExportData() {
         if (!selectedAseguradora) return;
 
-        const dataToExport = registros.map(reg => ({
+        const dataToExport = filteredRegistros.map(reg => ({
             'Cliente': reg.cliente,
             'Situación': reg.situacion,
             'Tipo de Pago': reg.tipo_pago,
@@ -358,20 +398,9 @@ export default function ComisionesClientPage() {
                 {/* VIEW 2: INSURER DASHBOARD */}
                 {view === 'DASHBOARD' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-                            <div className="flex items-center gap-4 bg-white p-3 rounded-3xl shadow-sm border border-gray-100">
-                                <label className="text-[10px] font-black uppercase tracking-widest text-[#16313a]/40 ml-4">Año:</label>
-                                <select
-                                    value={selectedYear}
-                                    onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                                    className="bg-gray-50 px-4 py-2 rounded-xl border-none font-black text-[#16313a] focus:ring-2 focus:ring-[#ffe008]"
-                                >
-                                    {[2023, 2024, 2025, 2026].map(y => <option key={y} value={y}>{y}</option>)}
-                                </select>
-                            </div>
-                        </div>
+                        {/* Removed Year Selector as per request */}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
                             {categories.map(cat => (
                                 <button
                                     key={cat}
@@ -493,10 +522,8 @@ export default function ComisionesClientPage() {
                     <div className="pb-20">
                         <div className="flex justify-between items-center mb-8">
                             <div className="flex items-center gap-6">
-                                <div className="bg-[#16313a] text-white px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest">
-                                    {selectedYear}
-                                </div>
                                 <h2 className="text-3xl font-black tracking-tighter uppercase">{selectedCategory}</h2>
+                                {/* Removed Year Badge */}
                             </div>
                             <div className="flex gap-3">
                                 <button
@@ -508,7 +535,10 @@ export default function ComisionesClientPage() {
                                 >
                                     <Plus className="w-4 h-4" /> Nuevo Registro
                                 </button>
-                                <button className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all">
+                                <button
+                                    onClick={() => setShowFilters(!showFilters)}
+                                    className={`p-3 rounded-xl border shadow-sm transition-all ${showFilters ? 'bg-[#16313a] text-[#ffe008] border-[#16313a]' : 'bg-white border-gray-100 hover:border-gray-300'}`}
+                                >
                                     <Filter className="w-5 h-5" />
                                 </button>
                                 <button
@@ -556,14 +586,27 @@ export default function ComisionesClientPage() {
                                             ))}
                                             <th className="px-4 py-4 bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]"></th>
                                         </tr>
+                                        {showFilters && (
+                                            <tr className="bg-gray-50/50 border-b border-gray-100">
+                                                <th className="w-8 sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm"></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.cliente || ''} onChange={e => setFilters({ ...filters, cliente: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.situacion || ''} onChange={e => setFilters({ ...filters, situacion: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.tipo_pago || ''} onChange={e => setFilters({ ...filters, tipo_pago: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.numero_poliza || ''} onChange={e => setFilters({ ...filters, numero_poliza: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.fecha_efecto || ''} onChange={e => setFilters({ ...filters, fecha_efecto: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.pago_hiscox || ''} onChange={e => setFilters({ ...filters, pago_hiscox: e.target.value })} /></th>
+                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.producto || ''} onChange={e => setFilters({ ...filters, producto: e.target.value })} /></th>
+                                                <th colSpan={7} className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm"></th>
+                                            </tr>
+                                        )}
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
-                                        {registros.length === 0 && !isAddingNew ? (
+                                        {filteredRegistros.length === 0 && !isAddingNew ? (
                                             <tr>
-                                                <td colSpan={16} className="px-4 py-16 text-center text-gray-400 font-bold text-[9px]">No hay registros para este año y categoría.</td>
+                                                <td colSpan={16} className="px-4 py-16 text-center text-gray-400 font-bold text-[9px]">No hay registros encontrados.</td>
                                             </tr>
                                         ) : (
-                                            registros.map((reg) => (
+                                            filteredRegistros.map((reg) => (
                                                 <React.Fragment key={reg.id}>
                                                     <tr
                                                         onClick={() => {
