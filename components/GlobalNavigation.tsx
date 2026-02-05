@@ -59,7 +59,7 @@ export default function GlobalNavigation() {
 
                 {/* Mobile Menu Button */}
                 <button
-                    className="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                    className="lg:hidden p-2 text-[#ffe008] hover:bg-white/10 rounded-lg transition-colors border border-[#ffe008]/20"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
                     {isMenuOpen ? <X /> : <Menu />}
@@ -73,16 +73,19 @@ export default function GlobalNavigation() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="lg:hidden border-t border-white/10 bg-[#16313a] overflow-hidden shadow-2xl"
+                        className="lg:hidden border-t border-[#ffe008]/20 bg-[#16313a] overflow-hidden shadow-2xl absolute top-full left-0 right-0"
                     >
-                        <nav className="flex flex-col p-4 gap-2">
+                        <nav className="flex flex-col p-6 gap-3">
                             <Link
                                 href="/"
                                 onClick={() => setIsMenuOpen(false)}
-                                className={`flex items-center gap-3 p-3 rounded-xl transition-colors ${pathname === '/' ? 'bg-[#ffe008] text-[#16313a]' : 'text-slate-300 hover:bg-white/10 hover:text-white'}`}
+                                className={`flex items-center gap-4 p-4 rounded-xl transition-all border border-[#ffe008]/10
+                                    ${pathname === '/'
+                                        ? 'bg-[#ffe008] text-[#16313a] font-black'
+                                        : 'text-[#ffe008] hover:bg-[#ffe008]/10'}`}
                             >
-                                <LayoutGrid size={18} />
-                                <span className="font-bold text-sm">Menú Principal</span>
+                                <LayoutGrid size={20} />
+                                <span className="font-bold text-base">Menú Principal</span>
                             </Link>
 
                             {navItems.map((item) => (
@@ -90,14 +93,14 @@ export default function GlobalNavigation() {
                                     key={item.href}
                                     href={item.href}
                                     onClick={() => setIsMenuOpen(false)}
-                                    className={`flex items-center gap-3 p-3 rounded-xl transition-colors
+                                    className={`flex items-center gap-4 p-4 rounded-xl transition-all border border-[#ffe008]/10
                                         ${pathname.startsWith(item.href)
-                                            ? 'bg-[#ffe008] text-[#16313a] font-bold shadow-sm'
-                                            : 'text-slate-300 hover:bg-white/10 hover:text-white font-medium'
+                                            ? 'bg-[#ffe008] text-[#16313a] font-black shadow-lg'
+                                            : 'text-[#ffe008] hover:bg-[#ffe008]/10'
                                         }`}
                                 >
-                                    <item.icon size={18} />
-                                    <span className="text-sm">{item.name}</span>
+                                    <item.icon size={20} />
+                                    <span className="font-bold text-base">{item.name}</span>
                                 </Link>
                             ))}
                         </nav>
