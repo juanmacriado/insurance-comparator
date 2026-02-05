@@ -37,7 +37,7 @@ export default function GlobalNavigation() {
                 </Link>
 
                 {/* Desktop Navigation */}
-                <nav className="hidden md:flex items-center gap-2">
+                <nav className="hidden lg:flex items-center gap-2">
                     {navItems.map((item) => {
                         const isActive = pathname.startsWith(item.href);
                         return (
@@ -59,7 +59,7 @@ export default function GlobalNavigation() {
 
                 {/* Mobile Menu Button */}
                 <button
-                    className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
+                    className="lg:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
                     onClick={() => setIsMenuOpen(!isMenuOpen)}
                 >
                     {isMenuOpen ? <X /> : <Menu />}
@@ -73,7 +73,7 @@ export default function GlobalNavigation() {
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         exit={{ height: 0, opacity: 0 }}
-                        className="md:hidden border-t border-white/10 bg-[#16313a] overflow-hidden shadow-2xl"
+                        className="lg:hidden border-t border-white/10 bg-[#16313a] overflow-hidden shadow-2xl"
                     >
                         <nav className="flex flex-col p-4 gap-2">
                             <Link
