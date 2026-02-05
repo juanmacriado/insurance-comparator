@@ -14,9 +14,7 @@ export const CoverageCategories = [
     'Fraude Tecnológico',
     'Ecrime / Suplantación de Identidad',
     'Sanciones Administrativas / Multas',
-    'Notificación a los afectados',
     'Restitución de la imagen / Reputación',
-    'Defensa Jurídica'
 ] as const;
 
 export type CoverageCategory = typeof CoverageCategories[number];
@@ -52,32 +50,35 @@ export async function analyzePolicyWithAI(text: string): Promise<PolicyAnalysis>
         system: `Eres un experto suscriptor de seguros especializado en Ciberseguridad. 
     TU RESPUESTA DEBE SER EXCLUSIVAMENTE EN ESPAÑOL. NO USES INGLÉS EN LOS DETALLES NI EN EL ÁMBITO.
     
-    Analiza la póliza y extrae la información de PRIMAS y las 9 categorías de cobertura solicitadas.
+    Analiza la póliza y extrae la información de PRIMAS y las categorías de cobertura solicitadas.
 
     PREMIUMS TO EXTRACT:
     - Prima Neta (Net Premium)
     - Prima Total (Total Premium with taxes)
 
-    CATEGORÍAS A ANALIZAR:
-    1. Servicios de Respuesta a incidentes: Servicios forestenses, legales, etc. Ámbito territorial y franquicia.
-    2. Gastos de Mitigación: Gastos para aminorar daños.
-    3. Pérdida de Beneficios: Interrupción de negocio. cantidad, franquicia y ámbito.
-    4. Extorsión Cibernética: Ransomware, amenazas.
-    5. Gastos de Recuperación de Datos y Sistemas: Restauración.
-    6. Protección de Equipos: Hardware y activos fijos.
-    7. Responsabilidad Tecnológica / Responsabilidad Civil: Demandas de terceros.
-    8. Fraude Tecnológico: Transferencias fraudulentas.
-    9. Ecrime / Suplantación de Identidad: Phishing activo, robo de identidad.
-    10. Sanciones Administrativas / Multas: Multas regulatorias (RGPD) derivadas de incidentes.
-    11. Notificación a los afectados: Gastos de comunicación a clientes y reguladores.
-    12. Restitución de la imagen / Reputación: Gastos en consultoría de Relaciones Públicas y marketing.
-    13. Defensa Jurídica: Honorarios legales y gastos de defensa ante reclamaciones.
+    CATEGORÍAS A ANALIZAR Y SU CONTENIDO ESPERADO:
+    1. Servicios de Respuesta a incidentes: Servicios forenses, legales, gestión de crisis, etc. Busca explícitamente ámbito territorial y franquicia.
+    2. Gastos de Mitigación: Gastos para aminorar daños. INCLUYE TAMBIÉN: "Responsabilidad Regulatoria" (problemas de protección de datos) y "Notificación a los afectados" (gastos de comunicación).
+    3. Pérdida de Beneficios: Interrupción de negocio / Lucro cesante. Extrae cantidad, franquicia y ámbito.
+    4. Extorsión Cibernética: Ransomware, gestión de amenazas y pagos por extorsión.
+    5. Gastos de Recuperación de Datos y Sistemas: Restauración, recuperación y reconstitución de datos y sistemas informáticos.
+    6. Protección de Equipos: Daños materiales a hardware y activos fijos. INCLUYE: "Mejoras del sistema informático" y "Costes de hardware".
+    7. Responsabilidad Tecnológica / Responsabilidad Civil: Demandas de terceros y RC Profesional. INCLUYE: "Defensa Jurídica" (Honorarios legales).
+    8. Fraude Tecnológico: Transferencias fraudulentas. INCLUYE: Cryptojacking, fraude telecomunicaciones, bricking, hacking telefónico.
+    9. Ecrime / Suplantación de Identidad: Phishing activo, ingeniería social, robo de identidad y Delito informático.
+    10. Sanciones Administrativas / Multas: Multas regulatorias (RGPD), Sanciones, multas PCI-DSS, Procedimientos legales y multas reglamentarias, Responsabilidad Regulatoria.
+    11. Restitución de la imagen / Reputación: Consultoría de RP, marketing. INCLUYE: "Imagen pública" e "Interrupción de negocio por daño reputacional".
 
-    Reglas:
+    REGLAS CRÍTICAS DE LÓGICA E INFERENCIA (IMPORTANTE):
+    1. FRANQUICIA GENERAL: Identifica si existe una "Franquicia General" o "Franquicia Base" en la póliza. SI UNA COBERTURA NO TIENE FRANQUICIA ESPECÍFICA, ASIGNA LA FRANQUICIA GENERAL a esa cobertura en el campo 'deductible'.
+    2. INFERENCIA DE RESPUESTA A INCIDENTES: Si la categoría "Gastos de Recuperación de Datos y Sistemas" está presente (isPresent: true), DEBES MARCAR AUTOMÁTICAMENTE "Servicios de Respuesta a incidentes" TAMBIÉN como isPresent: true, aunque no se mencione explícitamente.
+    3. LÍMITE AGREGADO / "INCLUIDO": Busca el "Límite Agregado de Indemnización", "Límite Máximo Anual" o "Capital Asegurado de la Póliza". Si el límite (amount) de una cobertura se indica como "Incluido", "Según opción elegida", "Cobertura completa", "Límite de la póliza" o similar, NO escribas "Incluido". EN SU LUGAR, ESCRIBE EL VALOR NUMÉRICO DEL LÍMITE AGREGADO (ej. "500.000€").
+
+    Reglas de Formato:
     - RESPONDE SIEMPRE EN ESPAÑOL.
     - Captura con precisión los límites (Capital) y franquicias.
-    - Extrae el ámbito territorial (España, UE, Mundial, etc.).
-    - Si no encuentras una cobertura, marca isPresent: false.
+    - Extrae el ámbito territorial (España, UE, Mundial, etc.) siempre que aparezca.
+    - Si no encuentras una cobertura y las reglas de inferencia no aplican, marca isPresent: false.
     - Normaliza importes (p.ej. "1.000.000€").`,
         prompt: `Analiza este texto de póliza de seguro y extrae los datos solicitados en ESPAÑOL:\n\n${truncatedText}`,
     });
