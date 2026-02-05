@@ -117,16 +117,36 @@ export default function SocialMediaPage() {
     };
 
     const handleGenerateImage = async () => {
-        // if (!finalContent.instagram) return; // Removed restriction
         setGeneratingImage(true);
 
-        // Fallback strategy for the prompt
-        let promptToUse = "Corporate cybersecurity office environment, professional and modern.";
+        // Dynamic Prompt Strategy based on Active Tab context
+        let promptToUse = "";
 
+        // 1. Try to use the specific Visual Prompt if available (usually best quality)
         if (finalContent.instagram?.visualPrompt) {
             promptToUse = finalContent.instagram.visualPrompt;
-        } else if (data?.analysis.topic) {
+        }
+        // 2. If not, try to use the content of the ACTIVE tab
+        else if (activeTab === 'linkedin' && finalContent.linkedin?.text) {
+            // Summarize the LinkedIn post for the prompt
+            const summary = finalContent.linkedin.text.substring(0, 400).replace(/\n/g, ' ');
+            promptToUse = `Create a professional, corporate style image for a LinkedIn post about: ${summary}. No text in image.`;
+        }
+        else if (activeTab === 'twitter' && finalContent.twitter?.thread?.[0]) {
+            promptToUse = `Digital art illustration for a tweet about: ${finalContent.twitter.thread[0]}. Modern, tech style.`;
+        }
+        else if (activeTab === 'blog' && finalContent.blog?.title) {
+            promptToUse = `Editorial style header image for a blog post titled "${finalContent.blog.title}". Professional cybersecurity context.`;
+        }
+        else if (activeTab === 'instagram' && finalContent.instagram?.caption) {
+            const caption = finalContent.instagram.caption.substring(0, 300).replace(/\n/g, ' ');
+            promptToUse = `Instagram photo for this caption: ${caption}. High quality photography.`;
+        }
+        // 3. Fallback to the main analysis topic
+        else if (data?.analysis.topic) {
             promptToUse = `Professional corporate photography concept representing: ${data.analysis.topic}. High tech, secure, business style.`;
+        } else {
+            promptToUse = "Corporate cybersecurity office environment, professional and modern.";
         }
 
         try {
