@@ -1,5 +1,4 @@
-import { JSDOM } from 'jsdom';
-import { Readability } from '@mozilla/readability';
+import * as cheerio from 'cheerio';
 import { NewsItem } from './types';
 
 export async function scrapeUrl(url: string): Promise<NewsItem> {
@@ -19,24 +18,37 @@ export async function scrapeUrl(url: string): Promise<NewsItem> {
 
         const html = await response.text();
 
-        // 2. Parse DOM
-        const dom = new JSDOM(html, { url });
+        // 2. Parse with Cheerio
+        const $ = cheerio.load(html);
 
-        // 3. Extract content with Readability
-        const reader = new Readability(dom.window.document);
-        const article = reader.parse();
+        // 3. Extract Metadata
+        const title = $('meta[property="og:title"]').attr('content') || $('title').text() || '';
+        const siteName = $('meta[property="og:site_name"]').attr('content') || new URL(url).hostname;
+        const publishedTime = $('meta[property="article:published_time"]').attr('content') ||
+            $('meta[name="date"]').attr('content');
 
-        if (!article) {
-            throw new Error('Readability failed to parse article');
+        // 4. Extract Content (Smart Text Extraction)
+        // Remove unwanted elements
+        $('script, style, nav, footer, header, aside, .ads, .comment, .menu').remove();
+
+        // Try to find the main article container first
+        let content = '';
+        const selectors = ['article', 'main', '.post-content', '.entry-content', '#content', 'body'];
+
+        for (const selector of selectors) {
+            if ($(selector).length > 0) {
+                // Get all paragraphs within this container
+                content = $(selector).find('p').map((i, el) => $(el).text().trim()).get().join('\n\n');
+                if (content.length > 200) break; // If we found substantial content, stop
+            }
         }
 
-        // 4. Return Normalized Data
         return {
             url,
-            title: article.title || "",
-            source: article.siteName || new URL(url).hostname,
-            content: article.textContent || "", // Clean text
-            publishedTime: dom.window.document.querySelector('meta[property="article:published_time"]')?.getAttribute('content') || undefined,
+            title: title.trim(),
+            source: siteName,
+            content: content || "",
+            publishedTime: publishedTime,
             scrapedAt: new Date().toISOString()
         };
 
