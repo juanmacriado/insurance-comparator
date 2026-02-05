@@ -1,4 +1,5 @@
 'use client';
+// Reverting to previous design
 
 import { ShieldCheck, ArrowRight, FileStack, ClipboardCheck, Percent, KeyRound } from 'lucide-react';
 import Link from 'next/link';
