@@ -92,6 +92,21 @@ export default function LandingPage() {
                             </div>
                         </div>
                     </Link>
+
+                    {/* Option: Social Media Agent */}
+                    <Link href="/social-media" className="group">
+                        <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                            <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
+                                <ShieldCheck className="w-8 h-8 text-[#16313a]" />
+                            </div>
+                            <h2 className="text-2xl font-black mb-4 tracking-tight">Agente Social Media</h2>
+                            <p className="text-[#16313a]/60 text-base mb-12">Genera contenido para redes sociales a partir de noticias de ciberseguridad.</p>
+
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
+                                Crear Posts <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                            </div>
+                        </div>
+                    </Link>
                 </div>
             </div>
         </main>
