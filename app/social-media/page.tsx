@@ -117,12 +117,17 @@ export default function SocialMediaPage() {
     };
 
     const handleGenerateImage = async () => {
-        if (!finalContent.instagram) return; // Image generation is tied to Instagram content
+        // if (!finalContent.instagram) return; // Removed restriction
         setGeneratingImage(true);
 
-        // Use the Instagram visual prompt as a base, or derive from active tab content if needed
-        // For now, let's prioritize the specific visual prompt key.
-        const promptToUse = finalContent.instagram.visualPrompt || `Cybersecurity concept related to: ${data?.analysis.topic}`;
+        // Fallback strategy for the prompt
+        let promptToUse = "Corporate cybersecurity office environment, professional and modern.";
+
+        if (finalContent.instagram?.visualPrompt) {
+            promptToUse = finalContent.instagram.visualPrompt;
+        } else if (data?.analysis.topic) {
+            promptToUse = `Professional corporate photography concept representing: ${data.analysis.topic}. High tech, secure, business style.`;
+        }
 
         try {
             const url = await generateImageAction(promptToUse);
@@ -593,9 +598,9 @@ export default function SocialMediaPage() {
                                                 )}
                                                 <button
                                                     onClick={handleGenerateImage}
-                                                    disabled={generatingImage || !finalContent.instagram}
+                                                    disabled={generatingImage}
                                                     className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2
-                                                            ${generatingImage || !finalContent.instagram
+                                                            ${generatingImage
                                                             ? 'bg-slate-300 cursor-wait'
                                                             : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700'}`}
                                                 >
