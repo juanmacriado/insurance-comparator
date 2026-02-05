@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck, ArrowRight, FileStack, ClipboardCheck, Percent } from 'lucide-react';
+import { ShieldCheck, ArrowRight, FileStack, ClipboardCheck, Percent, KeyRound } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -19,20 +19,7 @@ export default function LandingPage() {
                 />
             </div>
 
-            {/* Brand Header */}
-            <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100 py-5">
-                <div className="container mx-auto px-6 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <div className="bg-[#16313a] p-2 rounded-xl shadow-lg">
-                            <ShieldCheck className="w-6 h-6 text-[#ffe008]" />
-                        </div>
-                        <span className="text-2xl font-black tracking-tighter text-[#16313a]">XEORIS</span>
-                    </div>
-                    <div className="text-[10px] font-black uppercase tracking-[0.4em] text-[#16313a]/30 hidden md:block">
-                        El Ciberseguro Inteligente
-                    </div>
-                </div>
-            </header>
+
 
             <div className="container mx-auto px-6 pt-36 pb-20 relative z-10 max-w-6xl">
                 {/* Hero Section */}
@@ -104,6 +91,21 @@ export default function LandingPage() {
 
                             <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
                                 Crear Posts <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                            </div>
+                        </div>
+                    </Link>
+
+                    {/* Option: User Management (Admin) */}
+                    <Link href="/admin/users" className="group">
+                        <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl hover:shadow-2xl hover:border-[#ffe008] transition-all duration-500 h-full flex flex-col items-center text-center">
+                            <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors duration-500">
+                                <KeyRound className="w-8 h-8 text-[#16313a]" />
+                            </div>
+                            <h2 className="text-2xl font-black mb-4 tracking-tight">Gestión de Usuarios</h2>
+                            <p className="text-[#16313a]/60 text-base mb-12">Administración de accesos y permisos del portal.</p>
+
+                            <div className="mt-auto flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
+                                Gestionar Accesos <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                             </div>
                         </div>
                     </Link>
