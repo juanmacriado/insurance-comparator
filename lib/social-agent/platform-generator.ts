@@ -3,6 +3,8 @@
 import { openai } from '@ai-sdk/openai';
 import { generateObject } from 'ai';
 import { z } from 'zod';
+import { getPrompts } from './prompts-db';
+
 import { AnalysisResult, PostVariation, PostVariationSchema } from './types';
 
 // Decomposed Schemas
@@ -39,6 +41,8 @@ export const PlatformContentSchema = z.object({
 
 export type PlatformContent = z.infer<typeof PlatformContentSchema>;
 
+// ... (existing imports)
+
 export async function generatePlatformSpecificContent(
     analysis: AnalysisResult,
     variationAngle: string,
@@ -46,6 +50,23 @@ export async function generatePlatformSpecificContent(
     customInstructions?: string,
     targetPlatform?: 'blog' | 'linkedin' | 'twitter' | 'instagram'
 ): Promise<PlatformContent> {
+
+    // Retrieve recent history to avoid repetition
+    let historyContext = "";
+    try {
+        const history = await getPrompts(); // Reuse the prompts DB table for now as a generic content history log
+        // Get last 5 items
+        const recent = history.slice(0, 5).map(h => `[Previous Content]: ${h.content.substring(0, 200)}...`).join('\n');
+        if (recent) {
+            historyContext = `
+            [RECENT HISTORY - DO NOT REPEAT SIMILAR PHRASING]
+            ${recent}
+            `;
+        }
+    } catch (e) {
+        console.warn("Could not fetch history", e);
+    }
+
 
     // Audience-Specific Nuances
     let audienceContext = "";
@@ -94,8 +115,16 @@ export async function generatePlatformSpecificContent(
     - ORIGINALITY: Use metaphors, rhetorical questions, or industry-specific contrarian views.
     `;
 
+    // Define strict schema for ALL platforms generation (OpenAI Strict Mode compliant)
+    const AllPlatformsSchema = z.object({
+        blog: BlogSchema,
+        linkedin: LinkedinSchema,
+        twitter: TwitterSchema,
+        instagram: InstagramSchema
+    });
+
     // Determine Schema and Prompt based on Target
-    let activeSchema: any = PlatformContentSchema;
+    let activeSchema: any = AllPlatformsSchema;
     let specificPrompt = `Generate content for ALL platforms (Blog, LinkedIn, Twitter, Instagram) for angle "${variationAngle}".`;
 
     if (targetPlatform) {
@@ -136,6 +165,8 @@ export async function generatePlatformSpecificContent(
     - Vary paragraph and sentence length.
     - Change the order of ideas.
     - Use creative synonyms and reformulations.
+
+    ${historyContext}
     
     [PLATFORM GUIDELINES]
     ${linkedinGuidelines}

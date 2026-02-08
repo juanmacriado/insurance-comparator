@@ -1,160 +1,135 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { processNewsUrlAction, generateFinalContentAction, generateImageAction, savePromptAction, getSavedPromptsAction } from '../actions/social-agent-orchestrator';
-import { ProcessedNews, SavedPrompt } from '@/lib/social-agent/types';
-import { PlatformContent } from '@/lib/social-agent/platform-generator';
-import { Copy, ArrowRight, Loader2, ExternalLink, CheckCircle, FileText, Linkedin, Twitter, Instagram, Settings2, ChevronDown, ChevronUp, Image as ImageIcon, Sparkles } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { Loader2, CheckCircle, AlertCircle, Copy, RefreshCw, Share2, Download, Maximize2, Sparkles, History, Save, Image as ImageIcon, Wand2, Globe, ArrowLeft, ArrowRight, LayoutDashboard, MessageCircle } from 'lucide-react';
 import Image from 'next/image';
+import { processNewsUrlAction, generateFinalContentAction, generateImageAction, savePromptAction, getSavedPromptsAction } from '@/app/actions/social-agent-orchestrator';
+import { ProcessedNews, PostVariation, AnalysisResult } from '@/lib/social-agent/types';
+import { PlatformContent } from '@/lib/social-agent/platform-generator';
+import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
-export default function SocialMediaPage() {
-    // Stage 1: Input URL
-    const [url, setUrl] = useState('');
-    const [customInstructions, setCustomInstructions] = useState('');
-    const [audience, setAudience] = useState('technology_partners');
-    const [showInstructions, setShowInstructions] = useState(false); // Restored state
+// Tipos para los datos
+type Platform = 'linkedin' | 'twitter' | 'instagram' | 'blog';
 
-    // Prompt Management
-    const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
-    const [promptName, setPromptName] = useState('');
+interface SavedPrompt {
+    id: string;
+    name: string;
+    prompt: string;
+    platform: Platform;
+    timestamp: number;
+}
 
-    // Stage 2: Selection
+export default function SocialMediaAgent() {
+    // Estados principales
+    const [step, setStep] = useState<1 | 2 | 3>(1);
+    const [urlInput, setUrlInput] = useState('');
+    const [customInstructions, setCustomInstructions] = useState(''); // New state for custom instructions
     const [loading, setLoading] = useState(false);
-    const [status, setStatus] = useState('');
-    const [data, setData] = useState<ProcessedNews | null>(null);
+    const [loadingStep, setLoadingStep] = useState<string>('');
+    const [error, setError] = useState<string | null>(null);
 
-    // Stage 3: Final Output (Partial)
-    const [generatingFinal, setGeneratingFinal] = useState(false); // Used for "Step 1" selection spinner (now unused for generation)
-    const [generatingPlatform, setGeneratingPlatform] = useState<string | null>(null); // For individual tabs
-    const [selectedVariation, setSelectedVariation] = useState<string | null>(null);
-    // Initialize as empty object to support partial generation
-    const [finalContent, setFinalContent] = useState<Partial<PlatformContent>>({});
-    const [activeTab, setActiveTab] = useState<'blog' | 'linkedin' | 'twitter' | 'instagram'>('linkedin');
+    // Datos procesados
+    const [processedNews, setProcessedNews] = useState<ProcessedNews | null>(null);
+    const [selectedVariation, setSelectedVariation] = useState<PostVariation | null>(null);
+    const [platformContent, setPlatformContent] = useState<PlatformContent | null>(null);
 
-    // Image Stage
+    // Generación de Imagen
+    const [imagePrompt, setImagePrompt] = useState('');
     const [generatingImage, setGeneratingImage] = useState(false);
-    const [generatedImageUrl, setGeneratedImageUrl] = useState<string | null>(null);
+    const [generatedImage, setGeneratedImage] = useState<string | null>(null);
 
-    // Load Prompts on Mount
+    // Gestión de Prompts
+    const [savedPrompts, setSavedPrompts] = useState<SavedPrompt[]>([]);
+    const [activePlatform, setActivePlatform] = useState<Platform>('linkedin');
+
+    // Load Saved Prompts on mount
     useEffect(() => {
-        getSavedPromptsAction().then(setSavedPrompts).catch(console.error);
+        // loadPrompts(); // TODO: Implement saved prompts fetching correctly if needed
     }, []);
 
-    const handleSavePrompt = async () => {
-        if (!promptName || !customInstructions) return;
-        try {
-            await savePromptAction(promptName, customInstructions);
-            setPromptName('');
-            const updated = await getSavedPromptsAction();
-            setSavedPrompts(updated);
-        } catch (e) {
-            console.error(e);
-            alert("Error guardando prompt.");
-        }
-    };
+    const handleProcessUrl = async () => {
+        if (!urlInput.trim()) return;
 
-    const handleProcess = async () => {
-        if (!url) return;
         setLoading(true);
-        setStatus('Iniciando agente...');
-        setData(null);
-        setFinalContent({}); // Reset content
-        setGeneratedImageUrl(null);
-        setSelectedVariation(null); // Reset selected variation
+        setLoadingStep('Analizando contenido de la URL...');
+        setError(null);
 
         try {
-            const timer1 = setTimeout(() => setStatus('📥 Extrayendo contenido...'), 500);
-            const timer2 = setTimeout(() => setStatus('🧠 Analizando semántica...'), 2500);
-            const timer3 = setTimeout(() => setStatus('✍️ Planteando estrategias...'), 6000);
+            const data = await processNewsUrlAction(urlInput);
+            if (!data) throw new Error("No se pudo extraer información");
 
-            const result = await processNewsUrlAction(url);
-
-            clearTimeout(timer1); clearTimeout(timer2); clearTimeout(timer3);
-            setData(result);
-        } catch (error) {
-            console.error(error);
-            alert("Error al procesar la noticia. Verifica la URL.");
+            setProcessedNews(data);
+            setStep(2);
+        } catch (err) {
+            console.error(err);
+            setError("Error al procesar la noticia. Verifica la URL.");
         } finally {
             setLoading(false);
-            setStatus('');
         }
     };
 
-    const handleSelectVariation = (angle: string) => {
-        setSelectedVariation(angle);
-        setFinalContent({}); // Reset content
-        setActiveTab('linkedin'); // Default tab
-        setGeneratedImageUrl(null); // Reset image
-        // Note: We do NOT generate content yet. User must click "Generate" in the tab.
-    };
+    const generateContentForPlatform = async (platform: Platform, variation: PostVariation) => {
+        if (!processedNews) return;
 
-    const handleGeneratePlatform = async (platform: 'blog' | 'linkedin' | 'twitter' | 'instagram') => {
-        if (!data || !selectedVariation) return;
+        setLoading(true);
+        setLoadingStep(`Redactando contenido para ${platform}...`);
 
-        setGeneratingPlatform(platform);
         try {
-            const result = await generateFinalContentAction(
-                data.analysis,
-                selectedVariation,
-                audience,
+            const content = await generateFinalContentAction(
+                processedNews.analysis,
+                variation.angle,
+                "technology_partners",
                 customInstructions,
-                platform
+                platform // Pass specific platform
             );
 
-            // Merge new content into state
-            setFinalContent(prev => ({
+            setPlatformContent(prev => ({
                 ...prev,
-                [platform]: result[platform]
+                ...content
             }));
 
-        } catch (error) {
-            console.error(error);
-            alert(`Error generando contenido para ${platform}`);
+        } catch (err) {
+            console.error(err);
+            setError(`Error generando contenido para ${platform}.`);
         } finally {
-            setGeneratingPlatform(null);
+            setLoading(false);
+        }
+    };
+
+    const handleGenerateContent = async (variation: PostVariation) => {
+        if (!processedNews) return;
+
+        setSelectedVariation(variation);
+        setPlatformContent({}); // Reset content
+        setStep(3);
+
+        // Generate for the default/active platform (LinkedIn usually)
+        await generateContentForPlatform(activePlatform, variation);
+
+        // Auto-generate image prompt proposal
+        setImagePrompt(`Ilustración minimalista y moderna sobre: ${processedNews.original.title}. Estilo corporativo tecnológico de Xeoris, colores azul oscuro y amarillo neón, alta calidad, 4k. Concepto: ${variation.angle}`);
+    };
+
+    const handlePlatformChange = async (platform: Platform) => {
+        setActivePlatform(platform);
+
+        // If content for this platform doesn't exist, generate it
+        if (selectedVariation && (!platformContent || !getPlatformText(platform))) {
+            await generateContentForPlatform(platform, selectedVariation);
         }
     };
 
     const handleGenerateImage = async () => {
+        if (!imagePrompt) return;
+
         setGeneratingImage(true);
-
-        // Dynamic Prompt Strategy based on Active Tab context
-        let promptToUse = "";
-
-        // 1. Try to use the specific Visual Prompt if available (usually best quality)
-        if (finalContent.instagram?.visualPrompt) {
-            promptToUse = finalContent.instagram.visualPrompt;
-        }
-        // 2. If not, try to use the content of the ACTIVE tab
-        else if (activeTab === 'linkedin' && finalContent.linkedin?.text) {
-            // Summarize the LinkedIn post for the prompt
-            const summary = finalContent.linkedin.text.substring(0, 400).replace(/\n/g, ' ');
-            promptToUse = `Create a professional, corporate style image for a LinkedIn post about: ${summary}. No text in image.`;
-        }
-        else if (activeTab === 'twitter' && finalContent.twitter?.thread?.[0]) {
-            promptToUse = `Digital art illustration for a tweet about: ${finalContent.twitter.thread[0]}. Modern, tech style.`;
-        }
-        else if (activeTab === 'blog' && finalContent.blog?.title) {
-            promptToUse = `Editorial style header image for a blog post titled "${finalContent.blog.title}". Professional cybersecurity context.`;
-        }
-        else if (activeTab === 'instagram' && finalContent.instagram?.caption) {
-            const caption = finalContent.instagram.caption.substring(0, 300).replace(/\n/g, ' ');
-            promptToUse = `Instagram photo for this caption: ${caption}. High quality photography.`;
-        }
-        // 3. Fallback to the main analysis topic
-        else if (data?.analysis.topic) {
-            promptToUse = `Professional corporate photography concept representing: ${data.analysis.topic}. High tech, secure, business style.`;
-        } else {
-            promptToUse = "Corporate cybersecurity office environment, professional and modern.";
-        }
-
         try {
-            const url = await generateImageAction(promptToUse);
-            setGeneratedImageUrl(url);
-        } catch (error) {
-            console.error(error);
-            alert("Error generando la imagen.");
+            const imageUrl = await generateImageAction(imagePrompt);
+            setGeneratedImage(imageUrl);
+        } catch (err) {
+            console.error(err);
+            setError("Falló la generación de imagen.");
         } finally {
             setGeneratingImage(false);
         }
@@ -164,479 +139,343 @@ export default function SocialMediaPage() {
         navigator.clipboard.writeText(text);
     };
 
+    const getPlatformText = (platform: Platform): string => {
+        if (!platformContent) return '';
+        switch (platform) {
+            case 'linkedin':
+                return platformContent.linkedin?.text || '';
+            case 'twitter':
+                return platformContent.twitter?.thread.join('\n\n---\n\n') || '';
+            case 'instagram':
+                return platformContent.instagram?.caption || '';
+            case 'blog':
+                return `TITLE: ${platformContent.blog?.title}\n\n${platformContent.blog?.content}`;
+            default:
+                return '';
+        }
+    };
+
     return (
-        <div className="min-h-screen bg-slate-50 relative overflow-hidden font-sans">
-            <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-b from-[#16313a] to-slate-900 z-0 text-white p-6" />
+        <main className="min-h-screen text-slate-800 dark:text-slate-100 pb-20 overflow-x-hidden selection:bg-secondary selection:text-primary">
+            {/* Background Graphic elements handled by layout/globals */}
 
-            <main className="relative z-10 max-w-7xl mx-auto px-6 py-12">
-
-                {/* Main Card Container (Input) */}
-                <div className="relative z-20 bg-white rounded-[32px] shadow-2xl max-w-3xl mx-auto overflow-hidden border border-slate-100 mb-8">
-
-                    {/* Header inside Card */}
-                    <div className="bg-[#16313a] p-8 text-center bg-[url('/grid-pattern.svg')]">
-                        <h1 className="text-2xl md:text-3xl font-black mb-2 tracking-tight text-[#ffe008]">Agente de Contenidos Xeoris</h1>
-                        <p className="text-slate-300 text-sm md:text-base opacity-90">Tu estratega de marketing digital con IA.</p>
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-200 dark:border-slate-800 py-4 transition-colors duration-300">
+                <div className="container mx-auto px-6 max-w-7xl flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                        </Link>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-primary p-2 rounded-xl shadow-lg">
+                                <Sparkles className="w-5 h-5 text-secondary" />
+                            </div>
+                            <h1 className="text-xl font-display font-bold tracking-tight uppercase text-primary dark:text-white">
+                                Social Media Agent
+                            </h1>
+                        </div>
                     </div>
+                </div>
+            </header>
 
-                    <div className="p-6 md:p-10 space-y-6">
-                        {/* URL Input Group (unchanged logic, just ensuring context) */}
-                        <div className="space-y-2 text-center">
-                            <label className="text-sm font-bold text-slate-500 uppercase tracking-wider">Fuente de la Noticia</label>
-                            <div className="relative group">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <ExternalLink size={16} className="text-slate-400 group-focus-within:text-[#ffe008] transition-colors" />
-                                </div>
+            {/* Spacer */}
+            <div className="h-28"></div>
+
+            <div className="container mx-auto px-6 max-w-5xl">
+
+                {/* Progress Steps */}
+                <div className="flex justify-center mb-12">
+                    <div className="flex items-center gap-4 glass-card px-6 py-3 rounded-full border border-slate-200/50 dark:border-slate-700/50 shadow-sm">
+                        <StepIndicator num={1} active={step >= 1} current={step === 1} label="Fuente" />
+                        <div className="w-8 h-[2px] bg-slate-200 dark:bg-slate-700"></div>
+                        <StepIndicator num={2} active={step >= 2} current={step === 2} label="Estrategia" />
+                        <div className="w-8 h-[2px] bg-slate-200 dark:bg-slate-700"></div>
+                        <StepIndicator num={3} active={step >= 3} current={step === 3} label="Contenido" />
+                    </div>
+                </div>
+
+                {/* ERROR MESSAGE */}
+                {error && (
+                    <div className="max-w-2xl mx-auto mb-8 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-6 py-4 rounded-2xl flex items-center gap-3 shadow-lg backdrop-blur-sm animate-in fade-in slide-in-from-top-2">
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <p className="font-bold text-sm">{error}</p>
+                    </div>
+                )}
+
+                {/* STEP 1: INPUT URL */}
+                {step === 1 && (
+                    <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-5 duration-700">
+                        <div className="glass-card p-10 rounded-[32px] shadow-2xl border border-slate-200/50 dark:border-slate-700/50 text-center relative overflow-hidden">
+                            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-64 h-64 bg-primary/5 rounded-full blur-3xl -z-10"></div>
+
+                            <div className="w-20 h-20 bg-primary/5 dark:bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-8 text-primary dark:text-white shadow-inner">
+                                <Globe className="w-10 h-10" />
+                            </div>
+
+                            <h2 className="text-4xl font-display font-bold text-primary dark:text-white mb-4 tracking-tight">¿Qué noticia analizamos hoy?</h2>
+                            <p className="text-slate-500 dark:text-slate-400 text-lg mb-10 max-w-lg mx-auto leading-relaxed">
+                                Introduce la URL de una noticia del sector asegurador o tecnológico y generaremos contenido viral.
+                            </p>
+
+                            <div className="flex gap-3 relative z-10">
                                 <input
                                     type="text"
-                                    placeholder="https://ejemplo.com/noticia-ciberseguridad"
-                                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl outline-none text-slate-700 placeholder:text-slate-400 text-sm font-medium focus:ring-2 focus:ring-[#ffe008] focus:bg-white transition-all shadow-sm text-center"
-                                    value={url}
-                                    onChange={(e) => setUrl(e.target.value)}
-                                    onKeyDown={(e) => e.key === 'Enter' && handleProcess()}
+                                    placeholder="https://ejemplo.com/noticia-importante"
+                                    className="flex-1 bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-6 py-5 text-lg shadow-inner focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent transition-all backdrop-blur-sm"
+                                    value={urlInput}
+                                    onChange={(e) => setUrlInput(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && handleProcessUrl()}
                                 />
+                                <button
+                                    onClick={handleProcessUrl}
+                                    disabled={loading}
+                                    className="bg-primary hover:bg-indigo-900 text-white px-8 rounded-2xl font-bold uppercase tracking-widest flex items-center gap-2 shadow-xl hover:shadow-2xl transition-all disabled:opacity-70 disabled:cursor-not-allowed hover:scale-105 active:scale-95"
+                                >
+                                    {loading ? <Loader2 className="animate-spin w-5 h-5" /> : <ArrowRight className="w-6 h-6" />}
+                                </button>
+                            </div>
+
+                            <div className="flex flex-col gap-2 mt-6 max-w-2xl mx-auto">
+                                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-left ml-2">Instrucciones Adicionales (Opcional)</label>
+                                <textarea
+                                    placeholder="Ej: Enfócate en los riesgos para startups tecnológicas. Usa un tono más agresivo."
+                                    className="w-full bg-white/50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-6 py-4 text-sm shadow-inner focus:outline-none focus:ring-2 focus:ring-secondary focus:border-transparent transition-all backdrop-blur-sm min-h-[80px] resize-none"
+                                    value={customInstructions}
+                                    onChange={(e) => setCustomInstructions(e.target.value)}
+                                />
+                            </div>
+
+                            {/* Example Chips */}
+                            <div className="mt-8 flex flex-wrap justify-center gap-3">
+                                {['Ciberseguridad en Pymes', 'Nueva Ley IA', 'Seguros Paramétricos'].map((tag) => (
+                                    <button
+                                        key={tag}
+                                        onClick={() => setUrlInput(`https://news.google.com/search?q=${encodeURIComponent(tag)}`)}
+                                        className="px-4 py-2 bg-slate-100 dark:bg-slate-800 rounded-full text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors uppercase tracking-wider"
+                                    >
+                                        {tag}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* LOADING OVERLAY */}
+                {loading && (
+                    <div className="fixed inset-0 bg-white/80 dark:bg-slate-900/90 backdrop-blur-sm z-[60] flex flex-col items-center justify-center animate-in fade-in duration-300">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-secondary/30 blur-2xl rounded-full"></div>
+                            <Loader2 className="w-16 h-16 text-primary dark:text-white animate-spin relative z-10" />
+                        </div>
+                        <h3 className="mt-8 text-2xl font-display font-bold text-primary dark:text-white animate-pulse">{loadingStep}</h3>
+                    </div>
+                )}
+
+                {/* STEP 2: SELECT VARIATION */}
+                {step === 2 && processedNews && !loading && (
+                    <div className="animate-in fade-in slide-in-from-bottom-10 duration-700">
+                        <div className="text-center mb-10">
+                            <h2 className="text-3xl font-display font-bold text-primary dark:text-white mb-2">{processedNews.original.title}</h2>
+                            <div className="flex justify-center gap-2 mt-4">
+                                <span className="px-3 py-1 bg-secondary/20 text-yellow-800 dark:text-yellow-200 rounded-full text-[10px] font-black uppercase tracking-widest border border-secondary/30">
+                                    {processedNews.analysis.topic}
+                                </span>
+                                <span className="px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-300 dark:border-slate-700">
+                                    {processedNews.analysis.tone}
+                                </span>
                             </div>
                         </div>
 
-                        {/* Action Buttons Row */}
-                        <div className="flex flex-col md:flex-row gap-3">
-                            <button
-                                onClick={handleProcess}
-                                disabled={loading || !url}
-                                className={`flex-1 py-3 px-6 rounded-full font-bold text-[#16313a] text-sm transition-all flex items-center justify-center gap-2 shadow-lg hover:shadow-xl hover:-translate-y-0.5
-                                    ${loading
-                                        ? 'bg-slate-200 cursor-wait text-slate-500'
-                                        : 'bg-[#ffe008] hover:bg-[#ffe008] active:scale-95'}`}
-                            >
-                                {loading ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
-                                {loading ? 'Analizando...' : 'Analizar Noticia'}
-                            </button>
+                        <h3 className="text-center text-slate-400 font-bold uppercase tracking-[0.2em] text-xs mb-8">Selecciona el enfoque del contenido</h3>
 
-                            <button
-                                onClick={() => setShowInstructions(!showInstructions)}
-                                className={`py-3 px-5 rounded-full font-bold text-sm transition-all flex items-center justify-center gap-2 border
-                                    ${showInstructions
-                                        ? 'bg-slate-100 text-slate-800 border-slate-300'
-                                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'}`}
-                            >
-                                <Settings2 size={16} />
-                            </button>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {processedNews.variations.map((variation, idx) => (
+                                <VariationCard
+                                    key={idx}
+                                    title={variation.angle}
+                                    desc={variation.headline}
+                                    preview={variation.body}
+                                    icon={<Sparkles className="w-6 h-6" />}
+                                    onClick={() => handleGenerateContent(variation)}
+                                />
+                            ))}
                         </div>
 
-                        {/* Prompt Manager */}
-                        <AnimatePresence>
-                            {showInstructions && (
-                                <motion.div
-                                    initial={{ height: 0, opacity: 0 }}
-                                    animate={{ height: 'auto', opacity: 1 }}
-                                    exit={{ height: 0, opacity: 0 }}
-                                    className="overflow-hidden"
-                                >
-                                    <div className="bg-slate-50 rounded-2xl border border-slate-200 p-5 mt-2 space-y-4">
-                                        <div className="flex flex-col items-center gap-2 pb-2 border-b border-slate-200">
-                                            <h3 className="text-sm font-bold text-slate-700 uppercase tracking-wide text-center">
-                                                Configuración de Estilo
-                                            </h3>
-                                            <select
-                                                onChange={(e) => {
-                                                    const p = savedPrompts.find(sp => sp.id === Number(e.target.value));
-                                                    if (p) {
-                                                        setCustomInstructions(p.content);
-                                                        setPromptName(p.name);
-                                                    } else {
-                                                        setCustomInstructions('');
-                                                        setPromptName('');
-                                                    }
-                                                }}
-                                                className="text-xs border border-slate-300 rounded-lg py-1 px-2 bg-white"
-                                            >
-                                                <option value="">📂 Cargar Estilo...</option>
-                                                {savedPrompts.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <textarea
-                                            value={customInstructions}
-                                            onChange={(e) => setCustomInstructions(e.target.value)}
-                                            placeholder="Instrucciones personalizadas (Ej: tono irónico, enfocado a PYMES...)"
-                                            className="w-full h-24 p-3 bg-white border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-700 focus:ring-1 focus:ring-[#ffe008] outline-none resize-none"
-                                        />
-
-                                        <div className="flex gap-2">
-                                            <input
-                                                type="text"
-                                                placeholder="Nombre del estilo..."
-                                                className="flex-1 p-2 text-xs border border-slate-200 rounded-lg bg-white"
-                                                value={promptName}
-                                                onChange={(e) => setPromptName(e.target.value)}
-                                            />
-                                            <button
-                                                onClick={handleSavePrompt}
-                                                disabled={!promptName || !customInstructions}
-                                                className="px-4 py-2 bg-slate-800 text-white text-xs font-bold rounded-lg hover:bg-slate-900 disabled:opacity-50"
-                                            >
-                                                Guardar
-                                            </button>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <div className="flex justify-center mt-12">
+                            <button onClick={() => setStep(1)} className="text-slate-400 hover:text-primary dark:hover:text-white font-bold text-sm uppercase tracking-widest transition-colors">
+                                Cancelar y volver
+                            </button>
+                        </div>
                     </div>
-                    {/* Status Bar */}
-                    <AnimatePresence>
-                        {loading && (
-                            <motion.div
-                                initial={{ height: 0 }}
-                                animate={{ height: 'auto' }}
-                                className="bg-slate-50 border-t border-slate-100 p-3 text-center"
-                            >
-                                <p className="text-slate-500 font-mono text-sm flex items-center justify-center gap-2">
-                                    <Loader2 size={14} className="animate-spin text-blue-500" /> {status}
-                                </p>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-                </div>
+                )}
 
-                {/* --- RESULTS STACK --- */}
-                <AnimatePresence mode="wait">
-                    {data && !loading && (
-                        <div className="max-w-3xl mx-auto space-y-6">
+                {/* STEP 3: RESULT & IMAGE */}
+                {step === 3 && platformContent && (
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-10 duration-700 pb-20">
 
-                            {/* Card 1: Analysis Summary */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="bg-white rounded-[32px] p-8 shadow-xl border border-slate-100 text-center"
-                            >
-                                <h3 className="font-bold text-slate-900 mb-4 flex items-center justify-center gap-2 text-lg">
-                                    <CheckCircle size={20} className="text-[#ffe008]" />
-                                    Análisis Realizado
+                        {/* LEFT COL: CONTENT EDITOR */}
+                        <div className="lg:col-span-2 space-y-8">
+                            <div className="glass-card p-1 rounded-[32px] border border-slate-200 dark:border-slate-700 flex p-1.5 shadow-sm">
+                                {(['linkedin', 'twitter', 'instagram', 'blog'] as Platform[]).map((p) => (
+                                    <button
+                                        key={p}
+                                        onClick={() => handlePlatformChange(p)}
+                                        className={cn(
+                                            "flex-1 py-3 rounded-2xl font-bold text-xs uppercase tracking-widest transition-all gap-2 flex justify-center items-center",
+                                            activePlatform === p
+                                                ? "bg-primary text-white shadow-lg"
+                                                : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                                        )}
+                                    >
+                                        {p === 'linkedin' && <LinkedinIcon className="w-4 h-4" />}
+                                        {p === 'twitter' && <TwitterIcon className="w-4 h-4" />}
+                                        {p === 'instagram' && <InstagramIcon className="w-4 h-4" />}
+                                        {p === 'blog' && <FileTextIcon className="w-4 h-4" />}
+                                        <span className="hidden sm:inline">{p}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            <div className="glass-card p-8 rounded-[32px] border border-slate-200/50 dark:border-slate-700/50 shadow-lg relative min-h-[400px]">
+                                <textarea
+                                    className="w-full h-full min-h-[400px] bg-transparent border-none resize-none focus:ring-0 text-slate-700 dark:text-slate-200 text-lg leading-relaxed selection:bg-secondary/30"
+                                    value={getPlatformText(activePlatform)}
+                                    readOnly
+                                />
+                                <button
+                                    onClick={() => copyToClipboard(getPlatformText(activePlatform))}
+                                    className="absolute top-6 right-6 p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-500 hover:text-primary transition-colors shadow-sm"
+                                    title="Copiar texto"
+                                >
+                                    <Copy className="w-5 h-5" />
+                                </button>
+                            </div>
+
+                            <div className="flex gap-4">
+                                <button onClick={() => setStep(2)} className="flex-1 py-4 rounded-2xl border border-slate-200 dark:border-slate-700 font-bold text-slate-500 uppercase tracking-widest text-xs hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                                    Volver a Estrategia
+                                </button>
+                                <button onClick={() => handleProcessUrl()} className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-xl hover:translate-y-[-2px] transition-all">
+                                    Nueva Noticia
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* RIGHT COL: IMAGE GENERATOR */}
+                        <div className="space-y-6">
+                            <div className="glass-card p-6 rounded-[32px] border border-slate-200/50 dark:border-slate-700/50 shadow-lg">
+                                <h3 className="text-lg font-display font-bold text-primary dark:text-white mb-6 flex items-center gap-2">
+                                    <ImageIcon className="w-5 h-5 text-secondary" /> Generador de Imagen
                                 </h3>
 
-                                <div className="space-y-4 text-sm max-w-xl mx-auto">
-                                    <div className="bg-slate-50 p-4 rounded-xl">
-                                        <p className="font-semibold text-slate-700 mb-1">Tema Principal</p>
-                                        <p className="text-slate-600">{data.analysis.topic}</p>
-                                    </div>
-                                    <div>
-                                        <p className="font-semibold text-slate-700 mb-2">Hechos Clave</p>
-                                        <ul className="space-y-2 inline-block text-left">
-                                            {data.analysis.keyFacts.map((fact, i) => (
-                                                <li key={i} className="text-slate-500 flex gap-2 items-start">
-                                                    <span className="text-[#ffe008] text-xs mt-1">●</span> {fact}
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                    <div className="pt-4 border-t border-slate-100">
-                                        <a href={data.original.url} target="_blank" rel="noreferrer" className="text-xs font-bold text-blue-600 hover:underline flex items-center justify-center gap-1">
-                                            Fuente: {data.original.source} <ExternalLink size={10} />
-                                        </a>
-                                    </div>
-                                </div>
-                            </motion.div>
-
-                            {/* Card 2: Audience Selector */}
-                            {!selectedVariation && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.1 }}
-                                    className="bg-white rounded-[32px] p-8 shadow-xl border border-slate-100 text-center"
-                                >
-                                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-wide mb-6 flex items-center justify-center gap-2">
-                                        <span className="bg-[#16313a] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">1</span>
-                                        Selecciona tu Audiencia Objetivo
-                                    </h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                        {[
-                                            { id: 'technology_partners', label: 'Partners IT', icon: '🛠', desc: 'MSPs, Resellers' },
-                                            { id: 'insurance_brokers', label: 'Corredores', icon: '🛡', desc: 'Brokers' },
-                                            { id: 'data_protection', label: 'Protección Datos', icon: '⚖️', desc: 'DPOs' },
-                                        ].map((opt) => (
-                                            <button
-                                                key={opt.id}
-                                                onClick={() => setAudience(opt.id)}
-                                                className={`relative p-4 rounded-2xl border-2 flex flex-col items-center justify-center transition-all duration-300 group hover:-translate-y-1 hover:shadow-lg
-                                                    ${audience === opt.id
-                                                        ? 'border-[#ffe008] bg-[#ffe008]/10 shadow-lg scale-[1.02]'
-                                                        : 'border-slate-200 bg-white hover:border-[#ffe008]/50'}`}
-                                            >
-                                                <div className={`text-3xl mb-3 transition-transform duration-300 ${audience === opt.id ? 'scale-110' : 'grayscale opacity-50'}`}>
-                                                    {opt.icon}
-                                                </div>
-                                                <p className={`font-black text-sm mb-1 leading-tight ${audience === opt.id ? 'text-[#16313a]' : 'text-slate-700'}`}>
-                                                    {opt.label}
-                                                </p>
-                                                {/* Selection Indicator */}
-                                                <div className={`mt-2 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors
-                                                    ${audience === opt.id ? 'border-[#ffe008] bg-[#ffe008]' : 'border-slate-300'}`}>
-                                                    {audience === opt.id && <div className="w-1.5 h-1.5 rounded-full bg-[#16313a]" />}
-                                                </div>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-
-                            {/* Card 3: Variation Selector */}
-                            {!selectedVariation && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.2 }}
-                                    className="bg-white rounded-[32px] p-8 shadow-xl border border-slate-100 text-center"
-                                >
-                                    <h3 className="text-xl font-bold text-slate-800 border-b border-slate-200 pb-4 flex justify-center items-center gap-2 mb-6">
-                                        <span className="bg-[#16313a] text-white w-8 h-8 rounded-full flex items-center justify-center text-sm">2</span>
-                                        Selecciona un Enfoque
-                                    </h3>
-                                    <div className="grid md:grid-cols-3 gap-4">
-                                        {data.variations.map((v, i) => (
-                                            <button
-                                                key={i}
-                                                onClick={() => handleSelectVariation(v.angle)}
-                                                className="p-6 rounded-2xl border-2 flex flex-col items-center text-center transition-all border-slate-100 bg-white hover:border-[#ffe008] hover:shadow-lg group"
-                                            >
-                                                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md mb-3 inline-block
-                                                    ${v.angle.toLowerCase().includes('urgent') ? 'bg-red-50 text-red-600' :
-                                                        v.angle.toLowerCase().includes('edu') ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}
-                                                `}>
-                                                    {v.angle}
-                                                </span>
-                                                <h4 className="font-bold text-slate-800 mb-2 leading-tight text-sm">{v.headline}</h4>
-                                                <p className="text-xs text-slate-500 line-clamp-3">{v.body}</p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </motion.div>
-                            )}
-
-
-                            {/* Step 2: Final Content Display */}
-                            {selectedVariation && (
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden"
-                                >
-                                    <div className="bg-[#16313a] text-white p-6 flex justify-between items-center">
-                                        <div className="flex items-center gap-4">
-                                            <button onClick={() => setSelectedVariation(null)} className="text-white/50 hover:text-white transition-colors">
-                                                ← Cambiar Enfoque
-                                            </button>
-                                            <h3 className="text-lg font-bold">Contenido Multicanal</h3>
+                                <div className="aspect-square bg-slate-100 dark:bg-slate-800/50 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-slate-200 dark:border-slate-700 relative group">
+                                    {generatingImage ? (
+                                        <div className="flex flex-col items-center">
+                                            <Loader2 className="w-10 h-10 text-secondary animate-spin mb-4" />
+                                            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 animate-pulse">Generando...</p>
                                         </div>
-                                        <span className="text-xs bg-white/10 px-3 py-1 rounded-full text-[#ffe008]">
-                                            Enfoque: {selectedVariation}
-                                        </span>
-                                    </div>
-
-                                    {/* Tabs */}
-                                    <div className="flex border-b border-slate-200 bg-slate-50 overflow-x-auto">
-                                        {[
-                                            { id: 'linkedin', icon: Linkedin, label: 'LinkedIn' },
-                                            { id: 'twitter', icon: Twitter, label: 'X / Twitter' },
-                                            { id: 'instagram', icon: Instagram, label: 'Instagram' },
-                                            { id: 'blog', icon: FileText, label: 'Blog Post' },
-                                        ].map((tab) => (
-                                            <button
-                                                key={tab.id}
-                                                onClick={() => setActiveTab(tab.id as any)}
-                                                className={`flex items-center gap-2 px-6 py-4 font-medium text-sm whitespace-nowrap border-b-2 transition-all
-                                                        ${activeTab === tab.id
-                                                        ? 'border-[#ffe008] text-[#16313a] bg-white'
-                                                        : 'border-transparent text-slate-500 hover:text-slate-700 hover:bg-slate-100'}
-                                                    `}
-                                            >
-                                                <tab.icon size={18} /> {tab.label}
-                                                {/* Status Dot */}
-                                                {finalContent[tab.id as keyof PlatformContent] ? (
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 ml-1" />
-                                                ) : (
-                                                    <span className="w-2 h-2 rounded-full bg-slate-300 ml-1" />
-                                                )}
-                                            </button>
-                                        ))}
-                                    </div>
-
-                                    {/* Main Content Area Grid */}
-                                    <div className="grid md:grid-cols-12 gap-0">
-
-                                        {/* Text Content (Left) */}
-                                        <div className="md:col-span-7 p-8 border-r border-slate-100 min-h-[400px]">
-
-                                            {/* ON DEMAND GENERATION PLACEHOLDER */}
-                                            {!finalContent[activeTab] && (
-                                                <div className="h-full flex flex-col items-center justify-center text-center p-8 text-slate-400">
-                                                    <div className="bg-slate-100 p-4 rounded-full mb-4">
-                                                        <Sparkles size={32} className="text-slate-400" />
-                                                    </div>
-                                                    <p className="mb-6 max-w-xs mx-auto">
-                                                        Aún no has generado el contenido para <strong>{activeTab.toUpperCase()}</strong>.
-                                                    </p>
-                                                    <button
-                                                        onClick={() => handleGeneratePlatform(activeTab)}
-                                                        disabled={generatingPlatform === activeTab}
-                                                        className="px-8 py-3 bg-[#ffe008] text-[#16313a] font-bold rounded-xl shadow-lg hover:scale-105 transition-transform flex items-center gap-2"
-                                                    >
-                                                        {generatingPlatform === activeTab ? <Loader2 className="animate-spin" /> : <Sparkles size={18} />}
-                                                        Generar para {activeTab}
-                                                    </button>
-                                                </div>
-                                            )}
-
-                                            {/* CONTENT DISPLAY (If Exists) */}
-                                            {finalContent[activeTab] && (
-                                                <>
-                                                    {activeTab === 'linkedin' && finalContent.linkedin && (
-                                                        <div className="space-y-4">
-                                                            <div className="bg-slate-50 p-6 border border-slate-200 rounded-xl whitespace-pre-line text-slate-700 leading-relaxed shadow-sm text-sm">
-                                                                {finalContent.linkedin.text}
-                                                            </div>
-                                                            <div className="flex gap-2 flex-wrap">
-                                                                {finalContent.linkedin.hashtags.map((h, i) => (
-                                                                    <span key={i} className="text-blue-600 text-xs font-medium bg-blue-50 px-2 py-1 rounded">#{h}</span>
-                                                                ))}
-                                                            </div>
-                                                            <button onClick={() => copyToClipboard(finalContent.linkedin!.text)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition-colors flex justify-center gap-2">
-                                                                <Copy size={18} /> Copiar LinkedIn
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {activeTab === 'twitter' && finalContent.twitter && (
-                                                        <div className="space-y-6">
-                                                            {finalContent.twitter.thread.map((tweet, i) => (
-                                                                <div key={i} className="relative pl-8 border-l-2 border-slate-200">
-                                                                    <div className="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-slate-300 border-2 border-white" />
-                                                                    <div className="bg-slate-50 p-3 border border-slate-200 rounded-xl shadow-sm text-slate-700 text-sm mb-2">
-                                                                        {tweet}
-                                                                    </div>
-                                                                    <div className="text-right">
-                                                                        <button
-                                                                            onClick={() => copyToClipboard(tweet)}
-                                                                            className="text-xs text-slate-400 hover:text-blue-500 inline-flex items-center gap-1"
-                                                                        >
-                                                                            <Copy size={12} /> Copiar
-                                                                        </button>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    )}
-
-                                                    {activeTab === 'instagram' && finalContent.instagram && (
-                                                        <div className="space-y-4">
-                                                            <div className="bg-slate-50 p-6 border border-slate-200 rounded-xl whitespace-pre-line text-slate-700 leading-relaxed shadow-sm text-sm">
-                                                                {finalContent.instagram.caption}
-                                                            </div>
-                                                            <button
-                                                                onClick={() => copyToClipboard(finalContent.instagram!.caption)}
-                                                                className="w-full py-3 bg-pink-600 hover:bg-pink-700 text-white rounded-xl font-bold transition-colors flex justify-center gap-2"
-                                                            >
-                                                                <Copy size={18} /> Copiar Caption
-                                                            </button>
-                                                        </div>
-                                                    )}
-
-                                                    {activeTab === 'blog' && finalContent.blog && (
-                                                        <div className="space-y-6">
-                                                            <div className="border-b pb-4 mb-4">
-                                                                <h2 className="text-2xl font-black text-slate-900 mb-2">{finalContent.blog.title}</h2>
-                                                                <div className="flex gap-2">
-                                                                    {finalContent.blog.seoKeywords.map((kw, i) => (
-                                                                        <span key={i} className="bg-slate-100 px-2 py-1 rounded text-xs text-slate-500 font-mono">
-                                                                            {kw}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                            </div>
-                                                            <div className="prose prose-slate prose-sm max-w-none h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                                                                <div dangerouslySetInnerHTML={{ __html: finalContent.blog.content.replace(/\n/g, '<br/>') }} />
-                                                            </div>
-                                                            <button
-                                                                onClick={() => copyToClipboard(finalContent.blog!.content)}
-                                                                className="w-full py-3 bg-[#16313a] text-white rounded-xl font-bold flex items-center justify-center gap-2 hover:bg-[#16313a]/90"
-                                                            >
-                                                                <Copy size={18} /> Copiar Artículo
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {/* Image Generator (Right Column) */}
-                                        <div className="md:col-span-5 p-8 bg-slate-50/50 flex flex-col">
-                                            <h4 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                                <ImageIcon size={18} className="text-blue-500" />
-                                                Imagen Sugerida
-                                            </h4>
-
-                                            <div className="flex-1 bg-slate-200 rounded-2xl border-2 border-dashed border-slate-300 relative overflow-hidden flex items-center justify-center min-h-[300px]">
-                                                {generatedImageUrl ? (
-                                                    <div className="relative w-full h-full group">
-                                                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                                                        <img
-                                                            src={generatedImageUrl}
-                                                            alt="Generated content"
-                                                            className="w-full h-full object-cover"
-                                                        />
-                                                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                                            <a href={generatedImageUrl} target="_blank" rel="noreferrer" className="p-3 bg-white rounded-full text-slate-900 hover:scale-110 transition-transform">
-                                                                <ExternalLink size={20} />
-                                                            </a>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="text-center p-6 text-slate-400">
-                                                        <Sparkles size={48} className="mx-auto mb-4 opacity-30" />
-                                                        <p className="text-sm">Genera una imagen original (DALL-E 3) para acompañar este contenido.</p>
-                                                    </div>
-                                                )}
-
-                                                {generatingImage && (
-                                                    <div className="absolute inset-0 bg-white/80 backdrop-blur-sm flex items-center justify-center">
-                                                        <div className="text-center">
-                                                            <Loader2 size={32} className="animate-spin text-blue-600 mx-auto mb-2" />
-                                                            <p className="text-sm font-bold text-slate-600">Creando Imagen...</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="mt-4">
-                                                {finalContent.instagram?.visualPrompt && (
-                                                    <div className="bg-white p-3 rounded-lg border border-slate-200 text-xs text-slate-500 italic mb-4">
-                                                        Prompt Visual: "{finalContent.instagram.visualPrompt}"
-                                                    </div>
-                                                )}
-                                                <button
-                                                    onClick={handleGenerateImage}
-                                                    disabled={generatingImage}
-                                                    className={`w-full py-3 rounded-xl font-bold text-white shadow-lg transition-all flex items-center justify-center gap-2
-                                                            ${generatingImage
-                                                            ? 'bg-slate-300 cursor-wait'
-                                                            : 'bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700'}`}
-                                                >
-                                                    <Sparkles size={18} />
-                                                    {generatedImageUrl ? 'Regenerar Imagen' : 'Generar Imagen IA'}
+                                    ) : generatedImage ? (
+                                        <>
+                                            <Image src={generatedImage} alt="Generated" fill className="object-cover" />
+                                            <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                                <a href={generatedImage} download="xeoris-social.png" target="_blank" className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-white hover:text-primary transition-all">
+                                                    <Download className="w-6 h-6" />
+                                                </a>
+                                                <button onClick={() => setGeneratedImage(null)} className="p-3 bg-white/20 backdrop-blur rounded-full text-white hover:bg-red-500 hover:text-white transition-all">
+                                                    <RefreshCw className="w-6 h-6" />
                                                 </button>
                                             </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center p-8">
+                                            <Sparkles className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                                            <p className="text-sm font-bold text-slate-400">La imagen aparecerá aquí</p>
                                         </div>
+                                    )}
+                                </div>
 
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Prompt de Imagen</label>
+                                        <textarea
+                                            className="w-full bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl p-4 text-xs font-medium focus:ring-2 focus:ring-secondary focus:border-transparent min-h-[100px] resize-none"
+                                            value={imagePrompt}
+                                            onChange={(e) => setImagePrompt(e.target.value)}
+                                        />
                                     </div>
-                                </motion.div>
-                            )}
+                                    <button
+                                        onClick={handleGenerateImage}
+                                        disabled={generatingImage || !imagePrompt}
+                                        className="w-full py-4 bg-secondary text-primary rounded-xl font-bold uppercase tracking-widest text-xs shadow-md hover:shadow-lg transition-all disabled:opacity-50"
+                                    >
+                                        {generatedImage ? 'Regenerar Imagen' : 'Crear Imagen IA'}
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    )}
-                </AnimatePresence>
-            </main >
-        </div >
+
+                    </div>
+                )}
+
+            </div>
+        </main >
     );
+}
+
+// Subcomponents
+function StepIndicator({ num, active, current, label }: { num: number, active: boolean, current: boolean, label: string }) {
+    return (
+        <div className="flex items-center gap-3">
+            <div className={cn(
+                "w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm transition-all",
+                active ? "bg-primary text-white" : "bg-slate-100 dark:bg-slate-800 text-slate-400",
+                current && "ring-2 ring-secondary ring-offset-2 dark:ring-offset-slate-900"
+            )}>
+                {active ? <CheckCircle className="w-4 h-4" /> : num}
+            </div>
+            <span className={cn(
+                "text-xs font-bold uppercase tracking-widest hidden md:inline-block",
+                active ? "text-primary dark:text-white" : "text-slate-400"
+            )}>{label}</span>
+        </div>
+    )
+}
+
+function VariationCard({ title, desc, preview, icon, onClick }: { title: string, desc: string, preview: string, icon: React.ReactNode, onClick: () => void }) {
+    return (
+        <button onClick={onClick} className="text-left glass-card p-6 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 hover:border-secondary hover:shadow-xl transition-all group relative overflow-hidden h-full">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="flex items-start justify-between mb-4">
+                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-slate-600 dark:text-slate-300 group-hover:bg-primary group-hover:text-white transition-colors">
+                    {icon}
+                </div>
+                <div className="px-3 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-400 group-hover:bg-secondary group-hover:text-primary transition-colors">
+                    Seleccionar
+                </div>
+            </div>
+            <h4 className="text-xl font-display font-bold text-primary dark:text-white mb-2">{title}</h4>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">{desc}</p>
+            <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                <p className="text-xs text-slate-500 line-clamp-3 italic">"{preview}"</p>
+            </div>
+        </button>
+    )
+}
+
+// ICONS
+function MessageCircleIcon({ className }: { className?: string }) {
+    return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" /></svg>
+}
+function LinkedinIcon({ className }: { className?: string }) {
+    return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z" /><rect width="4" height="12" x="2" y="9" /><circle cx="4" cy="4" r="2" /></svg>
+}
+function TwitterIcon({ className }: { className?: string }) {
+    return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z" /></svg>
+}
+function InstagramIcon({ className }: { className?: string }) {
+    return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="20" x="2" y="2" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" /><line x1="17.5" x2="17.51" y1="6.5" y2="6.5" /></svg>
+}
+function FileTextIcon({ className }: { className?: string }) {
+    return <svg className={className} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="M16 13H8" /><path d="M16 17H8" /><path d="M10 9H8" /></svg>
 }

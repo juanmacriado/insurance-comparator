@@ -1,73 +1,107 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 @theme {
+  /* Colors from portal.html */
+  --color-primary: #312E81;
+  --color-secondary: #FACC15;
+  --color-background-light: #F8FAFC;
+  --color-background-dark: #0F172A;
+
+  /* Xeoris Legacy Colors (just in case) */
   --color-xeoris-blue: #16313a;
   --color-xeoris-yellow: #ffe008;
+  --color-xeoris-gray: #f3f4f6;
+
+  /* Typography */
+  --font-display: var(--font-outfit), sans-serif;
+  --font-sans: var(--font-inter), sans-serif;
+
+  /* Border Radius */
+  --radius-xeoris: 15px;
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #16313a;
+/* Custom CSS Classes from portal.html */
+.glass-card {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #312E81 0%, #4F46E5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.dark .text-gradient {
+  background: linear-gradient(135deg, #E2E8F0 0%, #94A3B8 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+}
+
+/* Base Styles */
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: 'Inter', sans-serif;
-  overflow-x: hidden;
+  background-color: var(--color-background-light);
+  color: #0F172A;
+  /* slate-900 */
+  font-family: var(--font-sans);
 }
 
-@layer components {
 
-  /* Official Xeoris Button Style - exact match to user image */
-  .btn-xeoris {
-    background-color: #ffe008;
-    color: #16313a;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    padding: 1.25rem 3rem;
-    border-radius: 30px;
-    /* High rounding as requested */
-    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    box-shadow: 0 10px 30px -10px rgba(255, 224, 8, 0.5);
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-  }
-
-  .btn-xeoris:hover {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 15px 40px -10px rgba(255, 224, 8, 0.7);
-    background-color: #ffeb3b;
-  }
-
-  .btn-xeoris:active {
-    transform: translateY(0) scale(0.98);
-  }
-
-  .btn-xeoris:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
-  }
-}
-
-/* Background Image styling */
-.xeoris-bg-image {
+/* Global Background Blobs */
+body::before,
+body::after {
+  content: '';
   position: fixed;
-  bottom: 0;
-  right: 0;
-  width: 100%;
-  max-width: 800px;
-  height: auto;
-  opacity: 0.08;
-  /* Very subtle to not interfere with text */
-  pointer-events: none;
   z-index: -1;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* Light Mode Blobs */
+body::before {
+  background: #E0E7FF;
+  /* indigo-100 */
+  width: 500px;
+  height: 500px;
+  top: -100px;
+  right: -100px;
+}
+
+body::after {
+  background: #FEF9C3;
+  /* yellow-100 */
+  width: 400px;
+  height: 400px;
+  bottom: 0;
+  left: 0;
+}
+
+/* Dark Mode Blobs */
+.dark body::before {
+  background: rgba(49, 46, 129, 0.4);
+  /* primary/40 */
+}
+
+.dark body::after {
+  background: rgba(250, 204, 21, 0.1);
+  /* secondary/10 */
 }

@@ -5,6 +5,8 @@ import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, ChevronRight
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { fetchAseguradoras, fetchRegistros, createAseguradora, createRegistro, editRegistro, removeRegistro } from './actions';
+import { cn } from '@/lib/utils';
+import React from 'react';
 
 type ViewState = 'LIST' | 'DASHBOARD' | 'DETAILS';
 
@@ -240,10 +242,10 @@ export default function ComisionesClientPage() {
     }
 
     return (
-        <main className="min-h-screen bg-[#f8fafb] text-[#16313a] selection:bg-[#ffe008] selection:text-[#16313a]">
+        <main className="min-h-screen text-slate-900 dark:text-slate-100 selection:bg-secondary selection:text-primary pb-20">
             {/* Header */}
-            <header className="bg-white border-b border-gray-100 py-6 sticky top-0 z-50">
-                <div className="container mx-auto px-6 flex justify-between items-center">
+            <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-200 dark:border-slate-800 py-4 transition-colors duration-300">
+                <div className="container mx-auto px-6 max-w-7xl flex justify-between items-center">
                     <div className="flex items-center gap-4">
                         {view !== 'LIST' ? (
                             <button
@@ -253,25 +255,25 @@ export default function ComisionesClientPage() {
                                     setExpandedRow(null);
                                     setIsAddingNew(false);
                                 }}
-                                className="hover:bg-gray-100 p-2 rounded-full transition-colors"
+                                className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors"
                             >
-                                <ArrowLeft className="w-5 h-5" />
+                                <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                             </button>
                         ) : (
-                            <Link href="/" className="hover:bg-gray-100 p-2 rounded-full transition-colors">
-                                <ArrowLeft className="w-5 h-5" />
+                            <Link href="/" className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors">
+                                <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                             </Link>
                         )}
                         <div className="flex items-center gap-3">
-                            <div className="bg-[#16313a] p-2 rounded-lg shadow-md">
-                                <ShieldCheck className="w-5 h-5 text-[#ffe008]" />
+                            <div className="bg-primary p-2 rounded-xl shadow-lg">
+                                <ShieldCheck className="w-5 h-5 text-secondary" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-black tracking-tight uppercase">
+                                <h1 className="text-xl font-display font-bold tracking-tight uppercase text-primary dark:text-white">
                                     Aseguradoras
                                 </h1>
                                 {selectedAseguradora && (
-                                    <div className="text-[10px] font-bold text-[#16313a]/40 uppercase tracking-widest mt-0.5">
+                                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
                                         {selectedAseguradora.nombre} {view === 'DETAILS' ? `> ${selectedCategory}` : '> Panel'}
                                     </div>
                                 )}
@@ -282,56 +284,59 @@ export default function ComisionesClientPage() {
                         <div className="flex gap-4">
                             <button
                                 onClick={() => setShowSettlementModal(true)}
-                                className="bg-[#ffe008] text-[#16313a] px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all border border-[#ffe008]"
+                                className="bg-secondary text-primary px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg hover:scale-105 transition-all shadow-md"
                             >
-                                <Calendar className="w-4 h-4" /> Liquidación Comisiones
+                                <Calendar className="w-4 h-4" /> Liquidación
                             </button>
                         </div>
                     )}
                 </div>
             </header>
 
+            {/* Spacer for fixed header */}
+            <div className="h-24"></div>
+
             {/* Settlement Selection Modal */}
             {showSettlementModal && (
-                <div className="fixed inset-0 bg-black/95 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-                    <div className="bg-[#16313a] rounded-[40px] p-12 max-w-lg w-full text-white shadow-[0_40px_120px_rgba(0,0,0,0.8)] animate-in fade-in zoom-in-95 duration-300 relative border border-white/10">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+                    <div className="glass-card bg-primary dark:bg-slate-900 rounded-[32px] p-10 max-w-lg w-full text-white shadow-2xl animate-in fade-in zoom-in-95 duration-300 relative border border-white/10">
                         <div className="flex justify-between items-start mb-10">
                             <div>
-                                <h2 className="text-4xl font-black uppercase tracking-tight leading-none text-[#ffe008]">Periodo de Liquidación</h2>
-                                <p className="text-[11px] font-bold text-[#ffe008]/80 uppercase tracking-[0.2em] mt-3">Define el intervalo de fechas para procesar</p>
+                                <h2 className="text-3xl font-display font-bold uppercase tracking-tight leading-none text-secondary">Periodo de Liquidación</h2>
+                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] mt-3">Define el intervalo de fechas</p>
                             </div>
                             <button
                                 onClick={() => setShowSettlementModal(false)}
-                                className="absolute top-10 right-10 text-white/30 hover:text-[#ffe008] hover:rotate-90 transition-all duration-300"
+                                className="absolute top-8 right-8 text-white/50 hover:text-secondary hover:rotate-90 transition-all duration-300"
                             >
-                                <X className="w-8 h-8" />
+                                <X className="w-6 h-6" />
                             </button>
                         </div>
 
-                        <div className="space-y-8 mb-12">
+                        <div className="space-y-8 mb-10">
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-black uppercase tracking-widest text-[#ffe008] ml-1">Fecha de Inicio</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha de Inicio</label>
                                 <input
                                     type="date"
                                     value={settlementRange.start}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, start: e.target.value })}
-                                    className="bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-5 font-black text-xl text-white focus:outline-none focus:border-[#ffe008] focus:bg-white/10 transition-all outline-none w-full [color-scheme:dark]"
+                                    className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-black uppercase tracking-widest text-[#ffe008] ml-1">Fecha Finalización</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha Finalización</label>
                                 <input
                                     type="date"
                                     value={settlementRange.end}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, end: e.target.value })}
-                                    className="bg-white/5 border-2 border-white/10 rounded-2xl px-6 py-5 font-black text-xl text-white focus:outline-none focus:border-[#ffe008] focus:bg-white/10 transition-all outline-none w-full [color-scheme:dark]"
+                                    className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                         </div>
 
                         <button
                             onClick={handleGenerateSettlement}
-                            className="w-full bg-[#ffe008] text-[#16313a] py-6 rounded-[24px] font-black uppercase tracking-[0.3em] text-sm hover:shadow-[0_20px_50px_rgba(255,224,8,0.3)] hover:scale-[1.02] active:scale-100 transition-all"
+                            className="w-full bg-secondary text-primary py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-sm hover:shadow-lg hover:bg-yellow-300 transition-all active:scale-[0.98]"
                         >
                             Generar Liquidación
                         </button>
@@ -344,27 +349,27 @@ export default function ComisionesClientPage() {
                 {view === 'LIST' && (
                     <div className="animate-in fade-in duration-500">
                         <div className="flex justify-between items-center mb-10">
-                            <h2 className="text-3xl font-black tracking-tighter">Aseguradoras</h2>
+                            <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight">Gestión de Aseguradoras</h2>
                             <button
                                 onClick={() => setShowNewAseguradora(!showNewAseguradora)}
-                                className="bg-[#16313a] text-[#ffe008] px-6 py-3 rounded-full font-black text-sm uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
+                                className="bg-primary hover:bg-indigo-900 text-white px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all"
                             >
-                                <Plus className="w-4 h-4" /> Añadir Aseguradora
+                                <Plus className="w-4 h-4" /> Nueva Aseguradora
                             </button>
                         </div>
 
                         {showNewAseguradora && (
-                            <form onSubmit={handleAddAseguradora} className="bg-white p-8 rounded-[40px] border-2 border-[#ffe008] mb-10 animate-in slide-in-from-top-4 duration-300">
+                            <form onSubmit={handleAddAseguradora} className="glass-card p-8 rounded-3xl border border-secondary/20 mb-10 animate-in slide-in-from-top-4 duration-300">
                                 <div className="flex gap-4">
                                     <input
                                         type="text"
                                         placeholder="Nombre de la aseguradora..."
                                         value={nombreAseguradora}
                                         onChange={(e) => setNombreAseguradora(e.target.value)}
-                                        className="flex-1 bg-gray-50 px-6 py-4 rounded-2xl border border-gray-100 focus:outline-none focus:border-[#16313a] font-bold"
+                                        className="flex-1 bg-white/50 dark:bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-primary font-bold text-slate-800 dark:text-white"
                                         autoFocus
                                     />
-                                    <button type="submit" className="bg-[#16313a] text-white px-8 py-4 rounded-2xl font-black uppercase tracking-widest text-xs">
+                                    <button type="submit" className="bg-primary text-white px-8 py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-900 transition-all">
                                         Confirmar
                                     </button>
                                 </div>
@@ -373,21 +378,27 @@ export default function ComisionesClientPage() {
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {loading ? (
-                                <div className="col-span-full py-20 text-center text-[#16313a]/20 font-black uppercase tracking-[0.3em]">Cargando...</div>
+                                <div className="col-span-full py-20 text-center text-slate-400 font-bold uppercase tracking-[0.3em] flex flex-col items-center">
+                                    <div className="w-6 h-6 border-2 border-secondary border-t-transparent rounded-full animate-spin mb-4"></div>
+                                    Cargando...
+                                </div>
                             ) : aseguradoras.length === 0 ? (
-                                <div className="col-span-full py-20 bg-white rounded-[40px] border-2 border-dashed text-center text-gray-400 font-bold">No hay aseguradoras registradas</div>
+                                <div className="col-span-full py-20 glass-card rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 text-center text-slate-400 font-bold">No hay aseguradoras registradas</div>
                             ) : (
                                 aseguradoras.map(asig => (
                                     <button
                                         key={asig.id}
                                         onClick={() => handleSelectAseguradora(asig)}
-                                        className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-sm hover:border-[#ffe008] hover:shadow-xl transition-all group text-left"
+                                        className="glass-card p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:border-secondary/50 dark:hover:border-secondary/50 hover:shadow-xl transition-all group text-left relative overflow-hidden"
                                     >
-                                        <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl text-[#16313a] group-hover:bg-[#ffe008] transition-colors mb-6">
+                                        <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-secondary/10 transition-colors"></div>
+                                        <div className="bg-primary/5 dark:bg-white/5 w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl text-primary dark:text-white group-hover:bg-primary group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-primary transition-colors mb-6 shadow-inner">
                                             {asig.nombre[0]}
                                         </div>
-                                        <h3 className="text-2xl font-black tracking-tight mb-2 uppercase">{asig.nombre}</h3>
-                                        <p className="text-[#16313a]/40 text-sm font-bold uppercase tracking-widest">Ver Detalles <ChevronRight className="inline w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" /></p>
+                                        <h3 className="text-2xl font-display font-bold tracking-tight mb-2 uppercase text-slate-800 dark:text-white">{asig.nombre}</h3>
+                                        <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-widest flex items-center">
+                                            Ver Detalles <ChevronRight className="inline w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
+                                        </p>
                                     </button>
                                 ))
                             )}
@@ -405,14 +416,15 @@ export default function ComisionesClientPage() {
                                 <button
                                     key={cat}
                                     onClick={() => handleSelectCategory(cat)}
-                                    className="bg-white p-10 rounded-[50px] border border-gray-100 shadow-sm hover:shadow-2xl hover:border-[#ffe008] transition-all group flex flex-col items-center text-center"
+                                    className="glass-card p-10 rounded-[40px] border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:shadow-2xl hover:border-secondary/50 transition-all group flex flex-col items-center text-center relative overflow-hidden"
                                 >
-                                    <div className="bg-[#16313a]/5 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-[#ffe008] transition-colors">
-                                        <FileText className="w-10 h-10 text-[#16313a]" />
+                                    <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent dark:from-white/5 pointer-events-none"></div>
+                                    <div className="bg-primary/5 dark:bg-white/5 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-secondary group-hover:text-primary transition-all text-primary dark:text-white shadow-inner">
+                                        <FileText className="w-10 h-10" />
                                     </div>
-                                    <h3 className="text-2xl font-black tracking-tight mb-2 uppercase">{cat}</h3>
-                                    <div className="mt-8 flex items-center gap-2 font-black text-[#16313a] uppercase tracking-widest text-[10px]">
-                                        Consultar Registros <ChevronRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+                                    <h3 className="text-2xl font-display font-bold tracking-tight mb-2 uppercase text-slate-800 dark:text-white">{cat}</h3>
+                                    <div className="mt-6 flex items-center gap-2 font-bold text-primary dark:text-secondary uppercase tracking-widest text-[10px]">
+                                        Consultar Registros <ChevronRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </button>
                             ))}
@@ -427,84 +439,87 @@ export default function ComisionesClientPage() {
                             <div className="flex items-center gap-6">
                                 <button
                                     onClick={() => setIsSettlementView(false)}
-                                    className="hover:bg-gray-100 p-2 rounded-full transition-colors"
+                                    className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors"
                                 >
-                                    <ArrowLeft className="w-5 h-5" />
+                                    <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                                 </button>
                                 <div>
-                                    <h2 className="text-3xl font-black tracking-tighter uppercase">Liquidación de Comisiones</h2>
-                                    <div className="text-[10px] font-bold text-[#16313a]/40 uppercase tracking-widest mt-0.5">
+                                    <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight uppercase">Liquidación de Comisiones</h2>
+                                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                                         Periodo: {formatDate(settlementRange.start)} - {formatDate(settlementRange.end)}
                                     </div>
                                 </div>
                             </div>
                             <button
                                 onClick={handleExportSettlement}
-                                className="bg-[#16313a] text-white px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
+                                className="bg-primary text-white px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
                             >
                                 <Download className="w-4 h-4" /> Descargar Excel
                             </button>
                         </div>
 
-                        <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 mb-20">
-                            <div className="rounded-[40px]">
+                        <div className="glass-card rounded-[32px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 overflow-hidden mb-20">
+                            <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse" id="settlement-table">
                                     <thead>
-                                        <tr className="bg-gray-50 border-b border-gray-100">
+                                        <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                                             {[
                                                 'Mes Liq.', 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
                                                 'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
                                                 '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
                                             ].map(h => (
-                                                <th key={h} className="px-4 py-4 text-[8px] font-black uppercase tracking-widest text-[#16313a]/40 whitespace-nowrap bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]">{h}</th>
+                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
                                             ))}
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {settlementResults.map((reg, idx) => (
-                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                                <td className="px-4 py-3 font-black text-[#16313a]/40 text-[8px] uppercase">{reg.settlementLabel}</td>
-                                                <td className="px-4 py-3 font-bold text-[9px] whitespace-nowrap">{reg.cliente}</td>
+                                            <tr key={idx} className="hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors">
+                                                <td className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-[9px] uppercase">{reg.settlementLabel}</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-slate-800 dark:text-slate-200">{reg.cliente}</td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-1.5">
-                                                        <span className={`w-1.5 h-1.5 rounded-full ring-1 ring-white shadow-sm ${reg.situacion?.trim().toUpperCase() === 'ALTA' ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                                                        <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md ${reg.situacion?.trim().toUpperCase() === 'ALTA'
-                                                            ? 'bg-green-500 text-white'
-                                                            : 'bg-red-50 text-red-600 border border-red-100'
-                                                            }`}>
+                                                        <span className={cn("w-1.5 h-1.5 rounded-full ring-1 ring-white/20 shadow-sm",
+                                                            reg.situacion?.trim().toUpperCase() === 'ALTA' ? 'bg-green-500' : 'bg-red-500'
+                                                        )}></span>
+                                                        <span className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md",
+                                                            reg.situacion?.trim().toUpperCase() === 'ALTA'
+                                                                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
+                                                                : 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                                        )}>
                                                             {reg.situacion}
                                                         </span>
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3"><span className="text-[8px] font-black uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded-md">{reg.tipo_pago}</span></td>
-                                                <td className="px-4 py-3 font-mono text-[8px] whitespace-nowrap">{reg.numero_poliza}</td>
-                                                <td className="px-4 py-3 text-[8px] text-gray-500 font-bold">{formatDate(reg.fecha_efecto)}</td>
-                                                <td className="px-4 py-3 font-bold text-[#16313a] text-[9px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
-                                                <td className="px-4 py-3 text-[8px] font-bold whitespace-nowrap">{reg.producto}</td>
-                                                <td className="px-4 py-3 font-bold text-[9px]">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
-                                                <td className="px-4 py-3 font-bold text-[9px]">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
-                                                <td className="px-4 py-3 font-black text-[#16313a] text-[9px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
-                                                <td className="px-4 py-3 font-bold text-[#16313a] text-[9px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
-                                                <td className="px-4 py-3 font-bold text-gray-400 text-[9px]">{Number(reg.comprobacion_prima ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500">{reg.tipo_pago}</span></td>
+                                                <td className="px-4 py-3 font-mono text-[9px] text-slate-600 dark:text-slate-400 whitespace-nowrap">{reg.numero_poliza}</td>
+                                                <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold">{formatDate(reg.fecha_efecto)}</td>
+                                                <td className="px-4 py-3 font-bold text-primary dark:text-slate-200 text-[10px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-primary dark:text-secondary text-[10px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
+                                                <td className="px-4 py-3 font-bold text-primary dark:text-slate-200 text-[10px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-slate-400 text-[10px]">{Number(reg.comprobacion_prima ?? 0).toFixed(2)}€</td>
                                                 <td className="px-4 py-3">
-                                                    <div className="bg-[#ffe008]/20 text-[#16313a] font-black text-[9px] px-2 py-1 rounded-lg border border-[#ffe008]/40 inline-block">
+                                                    <div className="bg-secondary/20 text-yellow-900 dark:text-yellow-100 font-bold text-[10px] px-2 py-1 rounded-lg border border-secondary/40 inline-block">
                                                         {Number(reg.importe_liquidar ?? 0).toFixed(2)}€
                                                     </div>
                                                 </td>
-                                                <td className="px-4 py-3 font-bold text-gray-400 text-[9px]">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
+                                                <td className="px-4 py-3 font-bold text-slate-400 text-[10px]">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
-                                    <tfoot className="bg-gray-50/50 border-t-2 border-gray-100">
-                                        <tr className="font-black text-[#16313a] uppercase tracking-widest text-[9px]">
+                                    <tfoot className="bg-slate-50/80 dark:bg-slate-800/80 border-t-2 border-slate-200 dark:border-slate-700">
+                                        <tr className="font-bold text-primary dark:text-white uppercase tracking-widest text-[9px]">
                                             <td colSpan={8} className="px-4 py-6 text-right">Totales</td>
-                                            <td className="px-4 py-6 text-[10px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.prima_neta || 0), 0).toFixed(2)}€</td>
-                                            <td className="px-4 py-6 text-[10px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.prima_total || 0), 0).toFixed(2)}€</td>
+                                            <td className="px-4 py-6 text-[11px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.prima_neta || 0), 0).toFixed(2)}€</td>
+                                            <td className="px-4 py-6 text-[11px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.prima_total || 0), 0).toFixed(2)}€</td>
                                             <td></td>
-                                            <td className="px-4 py-6 text-[10px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.neto_comision || 0), 0).toFixed(2)}€</td>
+                                            <td className="px-4 py-6 text-[11px]">{settlementResults.reduce((acc, curr) => acc + Number(curr.neto_comision || 0), 0).toFixed(2)}€</td>
                                             <td></td>
-                                            <td className="px-4 py-6 text-[10px]">
-                                                <div className="bg-[#ffe008] px-4 py-2 rounded-xl shadow-sm border border-yellow-200">
+                                            <td className="px-4 py-6 text-[11px]">
+                                                <div className="bg-secondary text-primary px-3 py-1.5 rounded-lg shadow-sm">
                                                     {settlementResults.reduce((acc, curr) => acc + Number(curr.importe_liquidar || 0), 0).toFixed(2)}€
                                                 </div>
                                             </td>
@@ -519,10 +534,10 @@ export default function ComisionesClientPage() {
 
                 {/* VIEW 3: DETAILED TABLE */}
                 {view === 'DETAILS' && !isSettlementView && (
-                    <div className="pb-20">
+                    <div className="pb-20 animate-in fade-in slide-in-from-bottom-5 duration-500">
                         <div className="flex justify-between items-center mb-8">
                             <div className="flex items-center gap-6">
-                                <h2 className="text-3xl font-black tracking-tighter uppercase">{selectedCategory}</h2>
+                                <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tighter uppercase">{selectedCategory}</h2>
                                 {/* Removed Year Badge */}
                             </div>
                             <div className="flex gap-3">
@@ -531,19 +546,23 @@ export default function ComisionesClientPage() {
                                         setIsAddingNew(true);
                                         setEditingData({});
                                     }}
-                                    className="bg-[#16313a] text-[#ffe008] px-6 py-3 rounded-full font-black text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
+                                    className="bg-primary text-secondary px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
                                 >
                                     <Plus className="w-4 h-4" /> Nuevo Registro
                                 </button>
                                 <button
                                     onClick={() => setShowFilters(!showFilters)}
-                                    className={`p-3 rounded-xl border shadow-sm transition-all ${showFilters ? 'bg-[#16313a] text-[#ffe008] border-[#16313a]' : 'bg-white border-gray-100 hover:border-gray-300'}`}
+                                    className={cn("p-3 rounded-xl border shadow-sm transition-all",
+                                        showFilters
+                                            ? 'bg-primary text-secondary border-primary'
+                                            : 'glass-card hover:bg-white/50 dark:hover:bg-slate-800/50'
+                                    )}
                                 >
                                     <Filter className="w-5 h-5" />
                                 </button>
                                 <button
                                     onClick={handleExportData}
-                                    className="p-3 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-gray-300 transition-all text-[#16313a] hover:bg-gray-50"
+                                    className="p-3 glass-card rounded-xl shadow-sm hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all text-primary dark:text-white"
                                     title="Descargar Excel"
                                 >
                                     <Download className="w-5 h-5" />
@@ -552,10 +571,11 @@ export default function ComisionesClientPage() {
                         </div>
 
                         {isAddingNew && (
-                            <div className="bg-white p-8 rounded-[40px] border-2 border-[#ffe008] mb-8 animate-in slide-in-from-top-4 duration-300">
-                                <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xl font-black uppercase tracking-tight">Nuevo Registro</h3>
-                                    <button onClick={() => setIsAddingNew(false)} className="text-gray-400 hover:text-red-500 transition-colors">
+                            <div className="glass-card p-8 rounded-[32px] border border-secondary/50 mb-8 animate-in slide-in-from-top-4 duration-300 relative overflow-hidden">
+                                <div className="absolute top-0 right-0 w-20 h-20 bg-secondary/10 rounded-full blur-xl -mr-10 -mt-10"></div>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-display font-bold text-primary dark:text-white uppercase tracking-tight">Nuevo Registro</h3>
+                                    <button onClick={() => setIsAddingNew(false)} className="text-slate-400 hover:text-red-500 transition-colors">
                                         <X className="w-6 h-6" />
                                     </button>
                                 </div>
@@ -563,7 +583,7 @@ export default function ComisionesClientPage() {
                                 <div className="mt-8 flex justify-end">
                                     <button
                                         onClick={handleAddNew}
-                                        className="bg-[#16313a] text-[#ffe008] px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-2 hover:shadow-xl transition-all"
+                                        className="bg-primary text-white hover:bg-indigo-900 px-8 py-3 rounded-xl font-bold uppercase tracking-widest text-xs flex items-center gap-2 hover:shadow-xl transition-all"
                                     >
                                         <Save className="w-4 h-4" /> Guardar Nuevo Registro
                                     </button>
@@ -571,39 +591,39 @@ export default function ComisionesClientPage() {
                             </div>
                         )}
 
-                        <div className="bg-white rounded-[40px] shadow-sm border border-gray-100 mb-20">
-                            <div className="rounded-[40px]">
+                        <div className="glass-card rounded-[32px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 overflow-hidden mb-20">
+                            <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse">
                                     <thead>
-                                        <tr className="bg-gray-50 border-b border-gray-100">
-                                            <th className="w-8 bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]"></th>
+                                        <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                                            <th className="w-8"></th>
                                             {[
                                                 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
                                                 'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
                                                 '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
                                             ].map(h => (
-                                                <th key={h} className="px-4 py-4 text-[8px] font-black uppercase tracking-widest text-[#16313a]/40 whitespace-nowrap bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]">{h}</th>
+                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
                                             ))}
-                                            <th className="px-4 py-4 bg-gray-50 sticky top-[77px] z-30 shadow-[0_1px_0_rgba(0,0,0,0.05)]"></th>
+                                            <th className="px-4 py-4"></th>
                                         </tr>
                                         {showFilters && (
-                                            <tr className="bg-gray-50/50 border-b border-gray-100">
-                                                <th className="w-8 sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm"></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.cliente || ''} onChange={e => setFilters({ ...filters, cliente: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.situacion || ''} onChange={e => setFilters({ ...filters, situacion: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.tipo_pago || ''} onChange={e => setFilters({ ...filters, tipo_pago: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.numero_poliza || ''} onChange={e => setFilters({ ...filters, numero_poliza: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.fecha_efecto || ''} onChange={e => setFilters({ ...filters, fecha_efecto: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.pago_hiscox || ''} onChange={e => setFilters({ ...filters, pago_hiscox: e.target.value })} /></th>
-                                                <th className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-1 rounded border border-gray-200" value={filters.producto || ''} onChange={e => setFilters({ ...filters, producto: e.target.value })} /></th>
-                                                <th colSpan={7} className="sticky top-[120px] z-30 bg-gray-50/80 backdrop-blur-sm"></th>
+                                            <tr className="bg-white/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
+                                                <th className="w-8"></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.cliente || ''} onChange={e => setFilters({ ...filters, cliente: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.situacion || ''} onChange={e => setFilters({ ...filters, situacion: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.tipo_pago || ''} onChange={e => setFilters({ ...filters, tipo_pago: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.numero_poliza || ''} onChange={e => setFilters({ ...filters, numero_poliza: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.fecha_efecto || ''} onChange={e => setFilters({ ...filters, fecha_efecto: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.pago_hiscox || ''} onChange={e => setFilters({ ...filters, pago_hiscox: e.target.value })} /></th>
+                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.producto || ''} onChange={e => setFilters({ ...filters, producto: e.target.value })} /></th>
+                                                <th colSpan={7}></th>
                                             </tr>
                                         )}
                                     </thead>
-                                    <tbody className="divide-y divide-gray-50">
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {filteredRegistros.length === 0 && !isAddingNew ? (
                                             <tr>
-                                                <td colSpan={16} className="px-4 py-16 text-center text-gray-400 font-bold text-[9px]">No hay registros encontrados.</td>
+                                                <td colSpan={16} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">No hay registros encontrados.</td>
                                             </tr>
                                         ) : (
                                             filteredRegistros.map((reg) => (
@@ -618,67 +638,69 @@ export default function ComisionesClientPage() {
                                                                 setEditingData(reg);
                                                             }
                                                         }}
-                                                        className={`hover:bg-gray-50/50 transition-colors cursor-pointer ${expandedRow === reg.id ? 'bg-gray-50/80 shadow-inner' : ''}`}
+                                                        className={cn("hover:bg-white/50 dark:hover:bg-slate-700/30 transition-colors cursor-pointer text-slate-800 dark:text-slate-200", expandedRow === reg.id && 'bg-primary/5 dark:bg-primary/20')}
                                                     >
-                                                        <td className="pl-4 py-4 text-gray-300">
+                                                        <td className="pl-4 py-4 text-slate-400">
                                                             {expandedRow === reg.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                                         </td>
-                                                        <td className="px-4 py-4 font-bold text-[9px] whitespace-nowrap">{reg.cliente}</td>
+                                                        <td className="px-4 py-4 font-bold text-[10px] whitespace-nowrap">{reg.cliente}</td>
                                                         <td className="px-4 py-4">
                                                             <div className="flex items-center gap-1.5">
-                                                                <span className={`w-1.5 h-1.5 rounded-full ring-1 ring-white shadow-sm ${reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-[#00c853]' :
-                                                                    reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-[#ff3b30]' : 'bg-gray-300'
-                                                                    }`}></span>
-                                                                <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md shadow-sm transition-colors ${reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-green-500 text-white' :
-                                                                    reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-red-50 text-red-600 border border-red-100' : 'bg-gray-400 text-white'
-                                                                    }`}>
+                                                                <span className={cn("w-1.5 h-1.5 rounded-full ring-1 ring-white/20 shadow-sm",
+                                                                    reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-green-500' :
+                                                                        reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-red-500' : 'bg-slate-300'
+                                                                )}></span>
+                                                                <span className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md",
+                                                                    reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                                                                        reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-slate-200 text-slate-500'
+                                                                )}>
                                                                     {reg.situacion}
                                                                 </span>
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-4"><span className="text-[8px] font-black uppercase tracking-widest bg-gray-100 px-1.5 py-0.5 rounded-md">{reg.tipo_pago}</span></td>
-                                                        <td className="px-4 py-4 font-mono text-[8px] whitespace-nowrap">{reg.numero_poliza}</td>
-                                                        <td className="px-4 py-4 text-[8px] text-gray-500 font-bold whitespace-nowrap">{formatDate(reg.fecha_efecto)}</td>
-                                                        <td className="px-4 py-4 font-bold text-[#16313a] text-[9px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
-                                                        <td className="px-4 py-4 text-[8px] font-bold whitespace-nowrap">{reg.producto}</td>
-                                                        <td className="px-4 py-4 font-bold text-[9px]">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
-                                                        <td className="px-4 py-4 font-bold text-[9px]">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
-                                                        <td className="px-4 py-4 font-black text-[#16313a] text-[9px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
-                                                        <td className="px-4 py-4 font-bold text-[#16313a] text-[9px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
-                                                        <td className="px-4 py-4 font-bold text-[9px] text-gray-400">{Number(reg.comprobacion_prima ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500 dark:text-slate-400">{reg.tipo_pago}</span></td>
+                                                        <td className="px-4 py-4 font-mono text-[9px] whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.numero_poliza}</td>
+                                                        <td className="px-4 py-4 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">{formatDate(reg.fecha_efecto)}</td>
+                                                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-slate-100 text-[10px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
+                                                        <td className="px-4 py-4 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4 font-bold text-primary dark:text-secondary text-[10px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
+                                                        <td className="px-4 py-4 font-bold text-primary dark:text-white text-[10px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4 font-bold text-[10px] text-slate-400">{Number(reg.comprobacion_prima ?? 0).toFixed(2)}€</td>
                                                         <td className="px-4 py-4">
-                                                            <div className="bg-[#ffe008]/20 text-[#16313a] font-black text-[9px] px-2 py-1 rounded-lg border border-[#ffe008]/40 inline-block whitespace-nowrap">
+                                                            <div className="bg-secondary/20 text-yellow-900 dark:text-yellow-100 font-bold text-[10px] px-2 py-1 rounded-lg border border-secondary/40 inline-block whitespace-nowrap">
                                                                 {Number(reg.importe_liquidar ?? 0).toFixed(2)}€
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-4 font-bold text-[9px] text-gray-400">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
+                                                        <td className="px-4 py-4 font-bold text-[10px] text-slate-400">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
                                                         <td className="px-4 py-4 text-right">
                                                             <button
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     handleDeleteRow(reg.id);
                                                                 }}
-                                                                className="text-gray-300 hover:text-red-500 transition-colors p-1"
+                                                                className="text-slate-300 hover:text-red-500 transition-colors p-1"
                                                             >
-                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                                <Trash2 className="w-4 h-4" />
                                                             </button>
                                                         </td>
                                                     </tr>
                                                     {expandedRow === reg.id && (
                                                         <tr>
-                                                            <td colSpan={16} className="px-4 py-2 bg-gray-50/50">
-                                                                <div className="mb-4">
+                                                            <td colSpan={16} className="px-4 py-2 bg-primary/5 dark:bg-slate-800/50">
+                                                                <div className="mb-4 p-2">
                                                                     <FormFields data={editingData} onChange={setEditingData} />
                                                                     <div className="flex justify-end gap-2 mt-4">
                                                                         <button
                                                                             onClick={() => setExpandedRow(null)}
-                                                                            className="px-4 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] text-gray-400 hover:text-[#16313a] transition-colors"
+                                                                            className="px-6 py-2 rounded-xl font-bold uppercase tracking-widest text-[9px] text-slate-500 hover:text-primary dark:hover:text-white transition-colors"
                                                                         >
                                                                             Cancelar
                                                                         </button>
                                                                         <button
                                                                             onClick={() => handleSaveRow(reg.id)}
-                                                                            className="bg-[#16313a] text-white px-6 py-2 rounded-xl font-black uppercase tracking-widest text-[8px] flex items-center gap-1.5 hover:shadow-lg transition-all"
+                                                                            className="bg-primary text-secondary px-6 py-2 rounded-xl font-bold uppercase tracking-widest text-[9px] flex items-center gap-1.5 hover:shadow-lg transition-all"
                                                                         >
                                                                             <Save className="w-3 h-3" /> Guardar Cambios
                                                                         </button>
@@ -715,69 +737,67 @@ const FormFields = ({ data, onChange }: { data: any, onChange: (newData: any) =>
     };
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 bg-gray-50/50 rounded-2xl border border-gray-100 mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Cliente</label>
-                <input type="text" value={data.cliente || ''} onChange={(e) => handleChange('cliente', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Cliente</label>
+                <input type="text" value={data.cliente || ''} onChange={(e) => handleChange('cliente', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Situación</label>
-                <input type="text" value={data.situacion || ''} onChange={(e) => handleChange('situacion', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" placeholder="ALTA / BAJA" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Situación</label>
+                <input type="text" value={data.situacion || ''} onChange={(e) => handleChange('situacion', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" placeholder="ALTA / BAJA" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Tipo de Pago</label>
-                <input type="text" value={data.tipo_pago || ''} onChange={(e) => handleChange('tipo_pago', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Tipo de Pago</label>
+                <input type="text" value={data.tipo_pago || ''} onChange={(e) => handleChange('tipo_pago', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Nº Póliza</label>
-                <input type="text" value={data.numero_poliza || ''} onChange={(e) => handleChange('numero_poliza', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nº Póliza</label>
+                <input type="text" value={data.numero_poliza || ''} onChange={(e) => handleChange('numero_poliza', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Fecha Efecto</label>
-                <input type="date" value={data.fecha_efecto || ''} onChange={(e) => handleChange('fecha_efecto', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Fecha Efecto</label>
+                <input type="date" value={data.fecha_efecto || ''} onChange={(e) => handleChange('fecha_efecto', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Pago Asegurador</label>
-                <input type="number" step="0.01" value={data.pago_hiscox || 0} onChange={(e) => handleChange('pago_hiscox', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Pago Asegurador</label>
+                <input type="number" step="0.01" value={data.pago_hiscox || 0} onChange={(e) => handleChange('pago_hiscox', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Producto</label>
-                <input type="text" value={data.producto || ''} onChange={(e) => handleChange('producto', e.target.value)} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Producto</label>
+                <input type="text" value={data.producto || ''} onChange={(e) => handleChange('producto', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Prima Neta</label>
-                <input type="number" step="0.01" value={data.prima_neta || 0} onChange={(e) => handleChange('prima_neta', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Prima Neta</label>
+                <input type="number" step="0.01" value={data.prima_neta || 0} onChange={(e) => handleChange('prima_neta', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Prima Total</label>
-                <input type="number" step="0.01" value={data.prima_total || 0} onChange={(e) => handleChange('prima_total', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Prima Total</label>
+                <input type="number" step="0.01" value={data.prima_total || 0} onChange={(e) => handleChange('prima_total', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">% Comisión</label>
-                <input type="number" step="0.01" value={data.porcentaje_comision || 0} onChange={(e) => handleChange('porcentaje_comision', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">% Comisión</label>
+                <input type="number" step="0.01" value={data.porcentaje_comision || 0} onChange={(e) => handleChange('porcentaje_comision', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Neto Comisión</label>
-                <input type="number" step="0.01" value={data.neto_comision || 0} onChange={(e) => handleChange('neto_comision', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Neto Comisión</label>
+                <input type="number" step="0.01" value={data.neto_comision || 0} onChange={(e) => handleChange('neto_comision', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Comp. Prima (Auto)</label>
-                <div className="bg-gray-100 border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold text-gray-500">
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Comp. Prima (Auto)</label>
+                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm font-bold text-slate-500 dark:text-slate-300">
                     {((Number(data.prima_neta || 0) * (Number(data.porcentaje_comision || 0) / 100)) - Number(data.neto_comision || 0)).toFixed(2)}€
                 </div>
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Liq. Aseguradora</label>
-                <input type="number" step="0.01" value={data.importe_liquidar || 0} onChange={(e) => handleChange('importe_liquidar', parseFloat(e.target.value))} className="bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold focus:ring-2 focus:ring-[#ffe008] outline-none" />
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Liq. Aseguradora</label>
+                <input type="number" step="0.01" value={data.importe_liquidar || 0} onChange={(e) => handleChange('importe_liquidar', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
             </div>
-            <div className="flex flex-col gap-1">
-                <label className="text-[8px] font-black uppercase tracking-widest text-gray-400 ml-1">Comp. Datos (Auto)</label>
-                <div className="bg-gray-100 border border-gray-100 rounded-lg px-3 py-1.5 text-[9px] font-bold text-gray-500">
+            <div className="flex flex-col gap-1.5">
+                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Comp. Datos (Auto)</label>
+                <div className="bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl px-3 py-2 text-sm font-bold text-slate-500 dark:text-slate-300">
                     {((Number(data.prima_total || 0) - (Number(data.prima_neta || 0) * (Number(data.porcentaje_comision || 0) / 100))) - Number(data.importe_liquidar || 0)).toFixed(2)}€
                 </div>
             </div>
         </div>
     );
 };
-
-import React from 'react';

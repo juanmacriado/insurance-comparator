@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ShieldCheck, ArrowLeft, FilePlus, X, FileText, Loader2, Download, GripHorizontal } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, FilePlus, X, FileText, Loader2, Download, GripHorizontal, FileStack } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
@@ -58,34 +58,34 @@ function SortableItem({ id, item, onRemove }: { id: string, item: QueuedFile, on
             ref={setNodeRef}
             style={style}
             className={cn(
-                "relative bg-white border border-gray-100 rounded-xl p-2 group transition-all duration-300 w-28 shrink-0",
-                isDragging ? "shadow-2xl ring-2 ring-[#ffe008] scale-105 opacity-90" : "shadow-sm hover:shadow-md hover:border-[#ffe008]"
+                "relative glass-card p-2 group transition-all duration-300 w-32 shrink-0 border border-slate-200/50 dark:border-slate-700/50",
+                isDragging ? "shadow-2xl ring-2 ring-secondary scale-105 opacity-90" : "shadow-sm hover:shadow-xl hover:border-secondary/50 dark:hover:border-secondary/50"
             )}
         >
             <div className="absolute top-1 right-1 z-10">
                 <button
                     onClick={() => onRemove(item.id)}
-                    className="p-1 bg-red-50 text-red-400 hover:text-red-600 rounded-full transition-all opacity-0 group-hover:opacity-100 scale-75"
+                    className="p-1.5 bg-red-500 text-white rounded-full transition-all opacity-0 group-hover:opacity-100 scale-75 hover:scale-100 shadow-sm"
                 >
                     <X className="w-3 h-3" />
                 </button>
             </div>
 
             <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing">
-                <div className="aspect-[3/4] bg-gray-50 rounded-lg overflow-hidden mb-2 border border-gray-100 relative shadow-inner">
+                <div className="aspect-[3/4] bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden mb-3 border border-slate-200 dark:border-slate-700 relative shadow-inner flex items-center justify-center">
                     {item.thumbnail ? (
                         <img src={item.thumbnail} alt={item.file.name} className="w-full h-full object-cover" />
                     ) : (
                         <div className="w-full h-full flex flex-col items-center justify-center">
-                            <Loader2 className="w-4 h-4 text-gray-200 animate-spin" />
+                            <Loader2 className="w-6 h-6 text-slate-300 animate-spin" />
                         </div>
                     )}
-                    <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 dark:group-hover:bg-white/5 transition-colors" />
                 </div>
 
-                <div className="flex items-center gap-1">
-                    <GripHorizontal className="w-3 h-3 text-gray-300 group-hover:text-[#ffe008] shrink-0" />
-                    <p className="font-bold text-[#16313a] text-[8px] truncate uppercase tracking-tighter w-full">
+                <div className="flex items-center gap-2 px-1">
+                    <GripHorizontal className="w-3.5 h-3.5 text-slate-400 group-hover:text-secondary shrink-0" />
+                    <p className="font-bold text-slate-700 dark:text-slate-200 text-[10px] truncate uppercase tracking-tight w-full" title={item.file.name}>
                         {item.file.name}
                     </p>
                 </div>
@@ -234,49 +234,60 @@ export default function PDFUnifier() {
     };
 
     return (
-        <main className="min-h-screen bg-[#fafbfc] text-[#16313a] selection:bg-[#ffe008] selection:text-[#16313a] overflow-x-hidden">
-            {/* Brand Header */}
-            <header className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-md z-50 border-b border-gray-100 py-5">
-                <div className="container mx-auto px-6 flex justify-between items-center">
-                    <div className="flex items-center gap-3">
-                        <Link href="/" className="bg-[#16313a] p-2 rounded-xl shadow-lg hover:bg-black transition-colors group">
-                            <ShieldCheck className="w-6 h-6 text-[#ffe008] group-hover:scale-110 transition-transform" />
+        <main className="min-h-screen text-slate-900 dark:text-slate-100 selection:bg-secondary selection:text-primary overflow-x-hidden pb-32">
+            {/* Header */}
+            <header className="fixed top-0 left-0 right-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-50 border-b border-slate-200 dark:border-slate-800 py-4 transition-colors duration-300">
+                <div className="container mx-auto px-6 max-w-7xl flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                        <Link href="/" className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors">
+                            <ArrowLeft className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                         </Link>
-                        <span className="text-2xl font-black tracking-tighter text-[#16313a]">XEORIS</span>
+                        <div className="flex items-center gap-3">
+                            <div className="bg-primary p-2 rounded-xl shadow-lg">
+                                <FileStack className="w-5 h-5 text-secondary" />
+                            </div>
+                            <h1 className="text-xl font-display font-bold tracking-tight uppercase text-primary dark:text-white">
+                                Unificador de Documentos
+                            </h1>
+                        </div>
                     </div>
-                    <Link href="/" className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.3em] text-[#16313a]/30 hover:text-[#16313a] transition-all">
-                        <ArrowLeft className="w-4 h-4" /> Volver al Hub
-                    </Link>
                 </div>
             </header>
 
-            <div className="container mx-auto px-6 pt-36 pb-20 relative z-10 max-w-6xl">
-                <div className="flex flex-col items-center mb-16 animate-in fade-in duration-1000">
-                    <div className="flex items-center gap-4 mb-6">
-                        <div className="h-[2px] w-12 bg-[#ffe008] rounded-full hidden md:block"></div>
-                        <p className="text-[#16313a]/40 text-xs uppercase tracking-[0.5em] font-black text-center">SOLUCIÓN DE PRODUCTIVIDAD</p>
-                        <div className="h-[2px] w-12 bg-[#ffe008] rounded-full hidden md:block"></div>
+            {/* Spacer */}
+            <div className="h-32"></div>
+
+            <div className="container mx-auto px-6 max-w-6xl relative z-10">
+                <div className="text-center mb-16 animate-in fade-in slide-in-from-bottom-5 duration-700">
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-secondary/10 text-secondary border border-secondary/20 font-black uppercase tracking-widest text-[10px] mb-6">
+                        <ShieldCheck className="w-3 h-3" /> Solución de Productividad
                     </div>
-                    <h1 className="text-5xl md:text-7xl font-black mb-6 tracking-tighter text-[#16313a] text-center leading-[0.9]">
-                        Unificador de <br />
-                        <span className="text-[#16313a] bg-[#ffe008] px-8 py-2 rounded-[40px] inline-block mt-4 shadow-2xl skew-x-[-2deg]">Documentos</span>
+                    <h1 className="text-5xl md:text-6xl font-display font-bold text-primary dark:text-white mb-6 tracking-tight leading-tight">
+                        Unifica tus PDFs en <br />
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-secondary to-yellow-200">un solo archivo</span>
                     </h1>
+                    <p className="text-lg text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+                        Arrastra y suelta tus documentos para combinarlos en el orden que prefieras. Rápido, seguro y sin marcas de agua.
+                    </p>
                 </div>
 
-                <div className="grid lg:grid-cols-[1fr_350px] gap-12">
+                <div className="grid lg:grid-cols-[1fr_350px] gap-8">
 
                     {/* Main Collection Area */}
                     <div className="space-y-8 min-w-0">
-                        <div className="bg-white border-2 border-dashed border-gray-200 p-10 rounded-[40px] text-center group hover:border-[#ffe008] transition-all duration-500 bg-gradient-to-b from-white to-gray-50/50">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="w-20 h-20 bg-[#ffe008] rounded-[25px] flex items-center justify-center shadow-lg hover:scale-110 active:scale-95 transition-all group-hover:rotate-6 mx-auto mb-4"
-                            >
-                                <FilePlus className="w-8 h-8 text-[#16313a]" />
-                            </button>
-                            <h3 className="text-xl font-black mb-1 tracking-tight">Añadir Archivos</h3>
-                            <p className="text-[#16313a]/40 font-bold text-[10px] uppercase tracking-widest">
-                                Selecciona tus documentos PDF
+                        {/* Drop Zone */}
+                        <div
+                            onClick={() => fileInputRef.current?.click()}
+                            className="glass-card border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 rounded-[40px] text-center group hover:border-secondary hover:bg-secondary/5 transition-all duration-300 cursor-pointer relative overflow-hidden"
+                        >
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/10 rounded-full -mr-16 -mt-16 blur-xl group-hover:scale-150 transition-transform duration-700"></div>
+
+                            <div className="w-20 h-20 bg-primary/5 dark:bg-white/5 rounded-[25px] flex items-center justify-center mx-auto mb-6 group-hover:scale-110 group-hover:rotate-3 transition-transform duration-300 shadow-inner">
+                                <FilePlus className="w-10 h-10 text-primary dark:text-white group-hover:text-secondary transition-colors" />
+                            </div>
+                            <h3 className="text-2xl font-display font-bold text-primary dark:text-white mb-2 tracking-tight">Añadir Archivos</h3>
+                            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest">
+                                Haz clic o arrastra PDFs aquí
                             </p>
                             <input
                                 type="file"
@@ -288,8 +299,19 @@ export default function PDFUnifier() {
                             />
                         </div>
 
+                        {/* File Grid */}
                         {files.length > 0 ? (
-                            <div className="bg-white/50 p-6 rounded-[30px] border border-gray-100">
+                            <div className="glass-card p-8 rounded-[40px] border border-slate-200/50 dark:border-slate-700/50 min-h-[200px]">
+                                <div className="flex justify-between items-center mb-6 px-2">
+                                    <h4 className="text-sm font-bold uppercase tracking-widest text-slate-500">Archivos en cola ({files.length})</h4>
+                                    <button
+                                        onClick={() => setFiles([])}
+                                        className="text-[10px] font-bold uppercase tracking-widest text-red-500 hover:text-red-600 transition-colors bg-red-50 dark:bg-red-900/20 px-3 py-1 rounded-full"
+                                    >
+                                        Limpiar Todo
+                                    </button>
+                                </div>
+
                                 <DndContext
                                     sensors={sensors}
                                     collisionDetection={closestCenter}
@@ -299,7 +321,7 @@ export default function PDFUnifier() {
                                         items={files.map(f => f.id)}
                                         strategy={rectSortingStrategy}
                                     >
-                                        <div className="flex flex-wrap gap-4 justify-start animate-in fade-in slide-in-from-bottom-5">
+                                        <div className="flex flex-wrap gap-4 justify-start animate-in fade-in slide-in-from-bottom-2">
                                             {files.map((item) => (
                                                 <SortableItem key={item.id} id={item.id} item={item} onRemove={removeFile} />
                                             ))}
@@ -307,50 +329,39 @@ export default function PDFUnifier() {
                                     </SortableContext>
                                 </DndContext>
                             </div>
-                        ) : (
-                            <div className="py-32 flex flex-col items-center justify-center opacity-10">
-                                <FileText className="w-24 h-24 mb-6" />
-                                <p className="font-black uppercase tracking-[0.5em] text-sm">Biblioteca vacía</p>
-                            </div>
-                        )}
+                        ) : null}
                     </div>
 
                     {/* Controls Sidebar */}
                     <div className="relative">
-                        <div className="sticky top-28 space-y-8 z-40">
-                            <div className="bg-[#16313a] text-white p-8 rounded-[40px] shadow-2xl border border-white/10 overflow-hidden relative flex flex-col items-center text-center">
-                                <div className="absolute top-[-50px] right-[-50px] w-32 h-32 bg-[#ffe008] opacity-10 rounded-full blur-3xl"></div>
+                        <div className="sticky top-32 space-y-6 z-40">
+                            <div className="glass-card bg-primary dark:bg-slate-900 p-8 rounded-[32px] shadow-2xl border border-white/10 dark:border-slate-700 overflow-hidden relative flex flex-col items-center text-center">
+                                <div className="absolute top-[-50px] right-[-50px] w-32 h-32 bg-secondary opacity-20 rounded-full blur-3xl animate-pulse"></div>
 
-                                <h4 className="text-[10px] font-black uppercase tracking-[0.4em] mb-8 text-[#ffe008]">Ajustes de Salida</h4>
+                                <h4 className="text-[10px] font-black uppercase tracking-[0.3em] mb-8 text-secondary">Configuración</h4>
 
-                                <div className="space-y-8 w-full">
-                                    <div>
-                                        <label className="block text-[10px] font-black uppercase tracking-widest mb-4 opacity-40">Nombre del PDF Final</label>
+                                <div className="space-y-6 w-full relative z-10">
+                                    <div className="text-left">
+                                        <label className="block text-[9px] font-bold uppercase tracking-widest mb-2 text-slate-400 pl-1">Nombre del Archivo</label>
                                         <input
                                             type="text"
                                             value={mergedTitle}
                                             onChange={(e) => setMergedTitle(e.target.value)}
-                                            className="w-full bg-white/5 border border-white/10 rounded-[15px] px-6 py-4 text-white focus:outline-none focus:border-[#ffe008] transition-all font-bold placeholder:text-white/20 text-center"
+                                            className="w-full bg-white/10 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-secondary transition-all font-bold text-sm placeholder:text-white/20"
                                             placeholder="Ej. Propuesta Global"
                                         />
                                     </div>
 
-                                    <div className="pt-4 space-y-4">
-                                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest opacity-40">
-                                            <span>Documentos</span>
-                                            <span>{files.length}</span>
-                                        </div>
-                                        <div className="h-[1px] bg-white/10 w-full"></div>
-
+                                    <div className="pt-2 space-y-4">
                                         <button
                                             onClick={handleMergeAndDownload}
                                             disabled={loading || files.length < 1}
-                                            className="w-full btn-xeoris py-6 text-xl flex items-center justify-center gap-3 mt-4 disabled:grayscale disabled:opacity-30"
+                                            className="w-full bg-secondary text-primary py-4 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-xl hover:bg-yellow-300 transition-all active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-50 disabled:grayscale disabled:cursor-not-allowed"
                                         >
                                             {loading ? (
-                                                <Loader2 className="w-6 h-6 animate-spin" />
+                                                <Loader2 className="w-4 h-4 animate-spin" />
                                             ) : (
-                                                <Download className="w-6 h-6" />
+                                                <Download className="w-4 h-4" />
                                             )}
                                             {loading ? "Procesando..." : "Descargar PDF"}
                                         </button>
@@ -358,17 +369,17 @@ export default function PDFUnifier() {
                                 </div>
                             </div>
 
-                            <div className="bg-white border-2 border-gray-100 p-8 rounded-[40px] shadow-xl text-center">
-                                <h5 className="text-[10px] font-black uppercase tracking-widest mb-6 opacity-40 italic">Instrucciones Rápidas</h5>
-                                <ul className="space-y-4">
+                            <div className="glass-card p-6 rounded-[32px] border border-slate-200/50 dark:border-slate-700/50 text-center">
+                                <h5 className="text-[9px] font-black uppercase tracking-widest mb-4 text-slate-400">Guía Rápida</h5>
+                                <ul className="space-y-3">
                                     {[
-                                        "Añade documentos con el botón superior.",
-                                        "Arrastra las portadas para cambiar el orden.",
-                                        "Revisa las miniaturas para confirmar.",
-                                        "Personaliza el título y descarga."
+                                        "Añade documentos PDF.",
+                                        "Arrastra para ordenar.",
+                                        "Revisa las miniaturas.",
+                                        "Descarga tu archivo."
                                     ].map((text, i) => (
-                                        <li key={i} className="flex flex-col items-center gap-1 text-xs font-bold leading-relaxed">
-                                            <span className="text-[#ffe008]">•</span>
+                                        <li key={i} className="flex items-start gap-2 text-[10px] font-bold text-slate-600 dark:text-slate-300 text-left">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-secondary mt-1 shrink-0"></span>
                                             {text}
                                         </li>
                                     ))}
@@ -386,11 +397,11 @@ export default function PDFUnifier() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-[#16313a]/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center text-center p-6"
+                        className="fixed inset-0 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl z-[100] flex flex-col items-center justify-center text-center p-6"
                     >
-                        <Loader2 className="w-24 h-24 text-[#ffe008] animate-spin mb-10" />
-                        <h2 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tighter">{loadingMsg}</h2>
-                        <p className="text-white/40 font-bold uppercase tracking-[0.4em] text-sm italic">Xeoris está orquestando tus archivos...</p>
+                        <Loader2 className="w-16 h-16 text-secondary animate-spin mb-8" />
+                        <h2 className="text-3xl font-display font-bold text-primary dark:text-white mb-2 tracking-tight">{loadingMsg}</h2>
+                        <p className="text-slate-500 dark:text-slate-400 font-bold uppercase tracking-[0.2em] text-xs">Unificando documentos...</p>
                     </motion.div>
                 )}
             </AnimatePresence>

@@ -33,8 +33,11 @@ function ResetPasswordContent() {
 
     if (!token) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-gray-50">
-                <div className="bg-red-50 text-red-500 p-6 rounded-xl font-bold border border-red-100">
+            <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 -z-10 opacity-30 dark:opacity-20 pointer-events-none">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-red-200 dark:bg-red-900 blur-[120px] rounded-full"></div>
+                </div>
+                <div className="bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-300 p-6 rounded-xl font-bold border border-red-100 dark:border-red-900/50 backdrop-blur-sm">
                     Token no válido o ausente.
                 </div>
             </div>
@@ -42,13 +45,20 @@ function ResetPasswordContent() {
     }
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-            <div className="max-w-md w-full p-8 bg-white rounded-2xl shadow-xl border border-gray-100">
+        <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+            {/* Background elements */}
+            <div className="absolute inset-0 -z-10 opacity-30 dark:opacity-20 pointer-events-none">
+                <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-green-200 dark:bg-green-900 blur-[120px] rounded-full"></div>
+            </div>
+
+            <div className="glass-card max-w-md w-full p-8 rounded-2xl shadow-xl">
                 <div className="text-center mb-8">
-                    <div className="bg-[#16313a]/5 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Lock className="w-8 h-8 text-[#16313a]" />
+                    <div className="bg-primary/10 dark:bg-white/10 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Lock className="w-8 h-8 text-primary dark:text-white" />
                     </div>
-                    <h1 className="text-2xl font-black text-[#16313a] uppercase tracking-tight">Nueva Contraseña</h1>
+                    <h1 className="text-2xl font-display font-bold text-primary dark:text-white uppercase tracking-tight">
+                        Nueva Contraseña
+                    </h1>
                 </div>
 
                 {success ? (
@@ -56,20 +66,20 @@ function ResetPasswordContent() {
                         <div className="flex justify-center mb-4">
                             <CheckCircle className="w-12 h-12 text-green-500" />
                         </div>
-                        <h2 className="text-xl font-bold text-[#16313a] mb-2">¡Contraseña Actualizada!</h2>
-                        <p className="text-gray-500 text-sm mb-6">Ya puedes acceder con tu nueva clave.</p>
-                        <Link href="/login" className="bg-[#16313a] text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs shadow-lg hover:shadow-xl transition-all">
+                        <h2 className="text-xl font-bold text-primary dark:text-white mb-2">¡Contraseña Actualizada!</h2>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">Ya puedes acceder con tu nueva clave.</p>
+                        <Link href="/login" className="bg-primary text-white px-6 py-3 rounded-xl font-bold uppercase tracking-widest text-xs shadow-lg hover:shadow-xl hover:bg-indigo-900 transition-all inline-block">
                             Ir a Iniciar Sesión
                         </Link>
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-1" htmlFor="password">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1 ml-1" htmlFor="password">
                                 Nueva Contraseña
                             </label>
                             <input
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#ffe008] focus:ring-2 focus:ring-[#ffe008]/20 outline-none transition-all font-bold text-sm"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm focus:border-primary dark:focus:border-indigo-400 focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium text-sm text-slate-800 dark:text-slate-200"
                                 type="password"
                                 name="password"
                                 required
@@ -78,11 +88,11 @@ function ResetPasswordContent() {
                             />
                         </div>
                         <div>
-                            <label className="block text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1 ml-1" htmlFor="confirmPassword">
+                            <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mb-1 ml-1" htmlFor="confirmPassword">
                                 Confirmar Contraseña
                             </label>
                             <input
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#ffe008] focus:ring-2 focus:ring-[#ffe008]/20 outline-none transition-all font-bold text-sm"
+                                className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm focus:border-primary dark:focus:border-indigo-400 focus:ring-2 focus:ring-primary/20 outline-none transition-all font-medium text-sm text-slate-800 dark:text-slate-200"
                                 type="password"
                                 name="confirmPassword"
                                 required
@@ -92,7 +102,7 @@ function ResetPasswordContent() {
                         </div>
 
                         {error && (
-                            <div className="bg-red-50 text-red-500 text-xs font-bold p-3 rounded-lg border border-red-100">
+                            <div className="bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-300 text-xs font-bold p-3 rounded-lg border border-red-100 dark:border-red-900/50">
                                 ⚠️ {error}
                             </div>
                         )}
@@ -100,7 +110,7 @@ function ResetPasswordContent() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-[#16313a] hover:bg-[#1e424d] text-white font-black uppercase tracking-widest text-xs py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
+                            className="w-full bg-primary hover:bg-indigo-900 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white font-bold uppercase tracking-widest text-xs py-4 rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50"
                         >
                             {loading ? 'Actualizando...' : 'Guardar Nueva Contraseña'}
                         </button>
