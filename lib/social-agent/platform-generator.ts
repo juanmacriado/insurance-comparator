@@ -129,8 +129,14 @@ export async function generatePlatformSpecificContent(
 
     if (targetPlatform) {
         if (targetPlatform === 'blog') {
-            activeSchema = z.object({ blog: BlogSchema });
-            specificPrompt = `Generate ONLY the BLOG POST for angle "${variationAngle}".`;
+            // We need to match the partial PlatformContentSchema structure
+            // Using z.object({ blog: BlogSchema }) is correct for the generation, 
+            // but we need to ensure the variable assignment is typed correctly or casted later.
+            // The issue might be that when we extract `object`, it has { blog: ... }, which matches PlatformContent.
+            activeSchema = z.object({
+                blog: BlogSchema
+            });
+            specificPrompt = `Generate ONLY the BLOG POST for angle "${variationAngle}". Ensure it is a full article.`;
         } else if (targetPlatform === 'linkedin') {
             activeSchema = z.object({ linkedin: LinkedinSchema });
             specificPrompt = `Generate ONLY the LINKEDIN POST for angle "${variationAngle}".`;

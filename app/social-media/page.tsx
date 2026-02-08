@@ -114,8 +114,17 @@ export default function SocialMediaAgent() {
     const handlePlatformChange = async (platform: Platform) => {
         setActivePlatform(platform);
 
+        if (!selectedVariation) return;
+
+        // Check if content exists specifically for the target platform
+        const hasContent =
+            (platform === 'linkedin' && !!platformContent?.linkedin) ||
+            (platform === 'twitter' && !!platformContent?.twitter) ||
+            (platform === 'instagram' && !!platformContent?.instagram) ||
+            (platform === 'blog' && !!platformContent?.blog);
+
         // If content for this platform doesn't exist, generate it
-        if (selectedVariation && (!platformContent || !getPlatformText(platform))) {
+        if (!hasContent) {
             await generateContentForPlatform(platform, selectedVariation);
         }
     };
@@ -141,15 +150,18 @@ export default function SocialMediaAgent() {
 
     const getPlatformText = (platform: Platform): string => {
         if (!platformContent) return '';
+
+        const sourceLink = processedNews?.original?.url ? `\n\nFuente: ${processedNews.original.url}` : '';
+
         switch (platform) {
             case 'linkedin':
-                return platformContent.linkedin?.text || '';
+                return (platformContent.linkedin?.text || '') + sourceLink;
             case 'twitter':
-                return platformContent.twitter?.thread.join('\n\n---\n\n') || '';
+                return (platformContent.twitter?.thread.join('\n\n---\n\n') || '') + sourceLink;
             case 'instagram':
-                return platformContent.instagram?.caption || '';
+                return (platformContent.instagram?.caption || '') + sourceLink;
             case 'blog':
-                return `TITLE: ${platformContent.blog?.title}\n\n${platformContent.blog?.content}`;
+                return (platformContent.blog ? `TITLE: ${platformContent.blog.title}\n\n${platformContent.blog.content}` : '') + sourceLink;
             default:
                 return '';
         }
