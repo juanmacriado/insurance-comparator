@@ -72,13 +72,16 @@ export async function generatePlatformSpecificContent(
     let audienceContext = "";
     switch (audience) {
         case "technology_partners":
-            audienceContext = "Target Audience: IT Resellers & MSPs. Focus on: Adding value to their portfolio, recurring revenue, complementing security services.";
+            audienceContext = "Target Audience: IT Resellers & MSPs. Focus: HOW TO GENERATE BUSINESS by offering Cyber Insurance & Security Tech to solve these issues. Emphasize upselling and portfolio completion.";
             break;
         case "insurance_brokers":
-            audienceContext = "Target Audience: Insurance Brokers. Focus on: Cross-selling opportunities, complexity of cyber risks, protecting their own liability.";
+            audienceContext = "Target Audience: Insurance Brokers. Focus: HOW TO GENERATE BUSINESS by proactively offering Cyber Insurance as the solution to these risks. Cross-selling opportunity.";
             break;
         case "data_protection":
-            audienceContext = "Target Audience: DPOs & Legal compliance experts. Focus on: GDPR fines (RGPD), regulatory compliance (NIS2, DORA), legal defense costs.";
+            audienceContext = "Target Audience: DPOs & Legal Partners. Focus: HOW TO GENERATE BUSINESS by recommending Cyber Insurance & Tech solutions to mitigate compliance risks (GDPR, fines).";
+            break;
+        case "general":
+            audienceContext = "Target Audience: GENERAL PUBLIC & BUSINESS OWNERS. Focus: AWARENESS & EDUCATION. Explain the risk clearly and urge them to improve their cybersecurity posture. Tone: Alerting but constructive.";
             break;
         default:
             audienceContext = "Target Audience: General Business Owners & CISOs.";

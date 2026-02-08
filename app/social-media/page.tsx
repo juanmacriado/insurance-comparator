@@ -33,6 +33,7 @@ export default function SocialMediaAgent() {
     const [processedNews, setProcessedNews] = useState<ProcessedNews | null>(null);
     const [selectedVariation, setSelectedVariation] = useState<PostVariation | null>(null);
     const [platformContent, setPlatformContent] = useState<PlatformContent | null>(null);
+    const [audience, setAudience] = useState<'technology_partners' | 'insurance_brokers' | 'data_protection' | 'general'>('technology_partners');
 
     // Generación de Imagen
     const [imagePrompt, setImagePrompt] = useState('');
@@ -79,9 +80,9 @@ export default function SocialMediaAgent() {
             const content = await generateFinalContentAction(
                 processedNews.analysis,
                 variation.angle,
-                "technology_partners",
+                audience,
                 customInstructions,
-                platform // Pass specific platform
+                platform
             );
 
             setPlatformContent(prev => ({
@@ -296,6 +297,28 @@ export default function SocialMediaAgent() {
                                 <span className="px-3 py-1 bg-slate-200 dark:bg-slate-800 text-slate-800 dark:text-slate-200 rounded-full text-[10px] font-black uppercase tracking-widest border border-slate-300 dark:border-slate-700">
                                     {processedNews.analysis.tone}
                                 </span>
+                            </div>
+                        </div>
+
+                        <div className="flex justify-center mb-10">
+                            <div className="inline-flex bg-slate-100 dark:bg-slate-800 p-1 rounded-2xl shadow-inner border border-slate-200 dark:border-slate-700 overflow-x-auto max-w-full">
+                                {(['technology_partners', 'insurance_brokers', 'data_protection', 'general'] as const).map((aud) => (
+                                    <button
+                                        key={aud}
+                                        onClick={() => setAudience(aud)}
+                                        className={cn(
+                                            "px-4 md:px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest transition-all whitespace-nowrap",
+                                            audience === aud
+                                                ? "bg-white dark:bg-slate-700 text-primary dark:text-white shadow-sm ring-1 ring-slate-200 dark:ring-slate-600"
+                                                : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                                        )}
+                                    >
+                                        {aud === 'technology_partners' && "Partner Tecnológico"}
+                                        {aud === 'insurance_brokers' && "Correduría Seguros"}
+                                        {aud === 'data_protection' && "Partner Legal/RGPD"}
+                                        {aud === 'general' && "General / Concienciación"}
+                                    </button>
+                                ))}
                             </div>
                         </div>
 
