@@ -36,7 +36,7 @@ const CATEGORIES = [
 export function compareAIAnalyses(analyses: PolicyAnalysis[], policyNames: string[]): ComparisonReport {
     const items: ComparisonResult[] = [];
 
-    // 1. Process coverage items
+    // 1. Process coverage items exactly as defined in the AI model
     CoverageCategories.forEach(cat => {
         const policyNodes = analyses.map(analysis => {
             const coverage = analysis.coverages.find(c => c.category === cat);

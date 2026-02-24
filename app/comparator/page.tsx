@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { FileUpload } from '@/components/FileUpload';
 import { ComparisonTable } from '@/components/ComparisonTable';
 import { PDFGenerator } from '@/components/PDFGenerator';
-import { extractTextAction, compareTextsAction } from '../actions';
+import { ExcelExport } from '@/components/ExcelExport';
+import { analyzePDFAction, getComparisonReportAction } from '../actions';
 import { ComparisonReport } from '@/lib/comparator';
+import { PolicyAnalysis } from '@/lib/ai-analyzer';
 import { Loader2, ShieldCheck, ChevronRight, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -47,24 +49,27 @@ export default function Home() {
     setError(null);
 
     try {
-      const extractedTexts: string[] = [];
+      const analyses: PolicyAnalysis[] = [];
       const Names: string[] = [];
 
       for (let i = 0; i < validFiles.length; i++) {
-        setLoadingMsg(`Procesando documento ${i + 1}...`);
+        setLoadingMsg(`AI analizando documento ${i + 1} de ${validFiles.length}...`);
         const formData = new FormData();
         formData.append('file', validFiles[i]);
-        const text = await extractTextAction(formData);
-        extractedTexts.push(text);
+
+        // Direct AI analysis on PDF
+        const analysis = await analyzePDFAction(formData);
+        analyses.push(analysis);
         Names.push(validFiles[i].name);
       }
 
-      setLoadingMsg("AI Analizando Coberturas...");
-      const result = await compareTextsAction(extractedTexts, Names);
+      setLoadingMsg("Generando comparativa técnica...");
+      const result = await getComparisonReportAction(analyses, Names);
       setReport(result);
       setStep(3);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Error Crítico.");
+      console.error("Comparison error:", err);
+      setError(err instanceof Error ? err.message : "Error Crítico en el análisis.");
     } finally {
       setLoading(false);
     }
@@ -205,8 +210,9 @@ export default function Home() {
               <ComparisonTable report={report} clientName={clientName} />
             </div>
 
-            <div className="glass-card p-8 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 mb-12">
+            <div className="glass-card p-8 rounded-2xl border border-slate-200/50 dark:border-slate-700/50 mb-12 flex flex-col md:flex-row items-center justify-center gap-6">
               <PDFGenerator report={report} clientName={clientName} />
+              <ExcelExport report={report} clientName={clientName} />
             </div>
 
             <div className="flex justify-center mt-12 mb-24">
