@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.12 · 18/10/2026**
+> **Versión 1.13 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.13 | 18/10/2026 | EV-08: el informe semanal pasa a enviarse a los cuatro destinatarios (Helena Sansalvador, Omar Abarkan, Ricardo Sánchez y Juanma Criado); los avisos de error, solo a Juanma. La tarea evita envíos duplicados y descarta pólizas de BAJA. |
 | 1.12 | 18/10/2026 | Regla de renovaciones: una póliza de **BAJA nunca renueva**, tenga o no fecha de baja (antes las de BAJA sin fecha se incluían por precaución). Las liquidaciones mantienen la regla de precaución. |
 | 1.11 | 18/10/2026 | EV-08 en producción: ruta `/api/renovaciones` desplegada y tarea programada de Claude creada (envío provisional solo a juanma.criado@xeoris.com). Prueba real: 34 pólizas, 11 sin fecha de baja, 50.942,69 €. |
 | 1.10 | 18/10/2026 | Ordenación interactiva por columnas en todas las tablas de datos (Detalle de registros, Próximas liquidaciones, Liquidación de comisiones y Previsión de renovaciones) con detección inteligente de tipos (numérico, fechas, texto) e inclusión del orden activo en las exportaciones a Excel. |
@@ -453,7 +454,8 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 
 **Parte Claude — configurada el 18/10/2026**
 - Tarea programada **"Informe semanal de renovaciones"** (id `trig_014B6qiMLGyuHTaYNxWGtMks`), lunes 07:58 hora de Madrid, modo automático, aviso por email al terminar cada ejecución. Se gestiona desde la lista de tareas programadas de Claude.
-- **Destinatario provisional: solo juanma.criado@xeoris.com.** Tras validar, ampliar a los cuatro destinatarios editando las instrucciones de la tarea.
+- **Destinatarios (desde el 18/10/2026)**: helena.sansalvador@xeoris.com, omar.abarkan@xeoris.com, ricardo.sanchez@xeoris.com y juanma.criado@xeoris.com, en un único correo. Los avisos **[ERROR]** solo a juanma.criado@xeoris.com.
+- Antes de enviar comprueba en *Elementos enviados* que no haya salido ya el informe ese día (evita duplicados) y descarta cualquier póliza de BAJA.
 - Lección aprendida: la herramienta de lectura web de Claude **no devuelve el contenido literal** (límite de cita), pero sí una **extracción estructurada** a tabla. Por eso la tarea pide la tabla y después comprueba nº de filas, nº de avisos y suma de primas contra la línea `CONTROL` antes de enviar.
 - Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ compartían nº de póliza con un registro de alta (anualidad anterior). Con la regla del 18/10/2026 (las de BAJA no renuevan) dejan de aparecer.
 
