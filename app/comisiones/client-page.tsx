@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, CalendarClock, AlertTriangle, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X, Edit2, Check, Clock } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, CalendarClock, AlertTriangle, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X, Edit2, Check, Clock, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
 import { fetchAseguradoras, fetchRegistros, createAseguradora, editAseguradora, createRegistro, editRegistro, removeRegistro, fetchLiquidacion, fetchRenovaciones, fetchProximasLiquidaciones } from './actions';
@@ -12,6 +12,206 @@ import React from 'react';
 type ViewState = 'LIST' | 'DASHBOARD' | 'DETAILS' | 'RENEWALS';
 
 const currentMonthISO = () => todayISO().slice(0, 7);
+
+type SortDirection = 'asc' | 'desc';
+
+interface SortState {
+    column: string;
+    direction: SortDirection;
+}
+
+interface ColumnDef {
+    key: string;
+    label: string;
+    align?: 'left' | 'right' | 'center';
+}
+
+function parseNumeric(val: any): number {
+    if (typeof val === 'number') return val;
+    if (typeof val === 'string') {
+        const cleaned = val.trim().replace(/\s/g, '').replace('€', '').replace('%', '');
+        if (cleaned.includes('-')) return NaN;
+        const normalized = cleaned.includes(',') && !cleaned.includes('.')
+            ? cleaned.replace(',', '.')
+            : cleaned.replace(/,/g, '');
+        const n = Number(normalized);
+        return isNaN(n) ? NaN : n;
+    }
+    return NaN;
+}
+
+function sortRecords<T>(
+    items: T[],
+    sortState: SortState | null,
+    customExtractors?: Record<string, (item: T) => any>
+): T[] {
+    if (!sortState || !sortState.column) return items;
+    const { column, direction } = sortState;
+
+    return [...items].sort((itemA, itemB) => {
+        const valA = customExtractors?.[column] ? customExtractors[column](itemA) : (itemA as any)?.[column];
+        const valB = customExtractors?.[column] ? customExtractors[column](itemB) : (itemB as any)?.[column];
+
+        const isEmptyA = valA === null || valA === undefined || valA === '';
+        const isEmptyB = valB === null || valB === undefined || valB === '';
+        if (isEmptyA && isEmptyB) return 0;
+        if (isEmptyA) return 1;
+        if (isEmptyB) return -1;
+
+        const numA = parseNumeric(valA);
+        const numB = parseNumeric(valB);
+
+        let res = 0;
+        if (!isNaN(numA) && !isNaN(numB)) {
+            res = numA - numB;
+        } else {
+            res = String(valA).localeCompare(String(valB), 'es', { numeric: true, sensitivity: 'base' });
+        }
+        return direction === 'asc' ? res : -res;
+    });
+}
+
+function toggleSort(prev: SortState | null, column: string): SortState {
+    if (prev?.column === column) {
+        return {
+            column,
+            direction: prev.direction === 'asc' ? 'desc' : 'asc'
+        };
+    }
+    return { column, direction: 'asc' };
+}
+
+function SortHeader({
+    label,
+    column,
+    currentSort,
+    onSort,
+    className,
+    align = 'left'
+}: {
+    label: string;
+    column: string;
+    currentSort: SortState | null;
+    onSort: (column: string) => void;
+    className?: string;
+    align?: 'left' | 'right' | 'center';
+}) {
+    const isSorted = currentSort?.column === column;
+    const direction = isSorted ? currentSort.direction : null;
+
+    return (
+        <th
+            scope="col"
+            aria-sort={direction === 'asc' ? 'ascending' : direction === 'desc' ? 'descending' : 'none'}
+            onClick={() => onSort(column)}
+            className={cn(
+                "px-4 py-3.5 text-[9px] font-bold uppercase tracking-widest whitespace-nowrap cursor-pointer select-none transition-all duration-150 group",
+                isSorted
+                    ? "text-primary dark:text-secondary bg-primary/5 dark:bg-primary/20 font-black"
+                    : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-100/60 dark:hover:bg-slate-800/60",
+                align === 'right' && "text-right",
+                align === 'center' && "text-center",
+                className
+            )}
+            title={`Ordenar por ${label} (${isSorted ? (direction === 'asc' ? 'ascendente, clic para descendente' : 'descendente, clic para ascendente') : 'clic para ordenar'})`}
+        >
+            <div className={cn("inline-flex items-center gap-1.5", align === 'right' && "flex-row-reverse")}>
+                <span>{label}</span>
+                <span
+                    className={cn(
+                        "inline-flex items-center justify-center transition-all duration-150",
+                        isSorted
+                            ? "opacity-100 text-primary dark:text-secondary translate-y-0"
+                            : "opacity-0 group-hover:opacity-60 text-slate-400"
+                    )}
+                >
+                    {direction === 'asc' ? (
+                        <ArrowUp className="w-3 h-3 stroke-[2.5]" />
+                    ) : direction === 'desc' ? (
+                        <ArrowDown className="w-3 h-3 stroke-[2.5]" />
+                    ) : (
+                        <ArrowUpDown className="w-3 h-3 stroke-[1.75]" />
+                    )}
+                </span>
+            </div>
+        </th>
+    );
+}
+
+const DETAILS_COLUMNS: ColumnDef[] = [
+    { key: 'cliente', label: 'Cliente' },
+    { key: 'situacion', label: 'Situación' },
+    { key: 'tipo_pago', label: 'Pago' },
+    { key: 'numero_poliza', label: 'Póliza' },
+    { key: 'fecha_efecto', label: 'Fecha Efecto' },
+    { key: 'fecha_baja', label: 'Fecha Baja' },
+    { key: 'producto', label: 'Producto' },
+    { key: 'prima_neta', label: 'Prima Neta' },
+    { key: 'prima_total', label: 'Prima Total' },
+    { key: 'porcentaje_comision', label: '% Comis.' },
+    { key: 'neto_comision', label: 'Neto Comis.' },
+    { key: 'comprobacion_prima', label: 'Comp. Prima' },
+    { key: 'importe_liquidar', label: 'Liquidación' },
+    { key: 'comprobacion_datos', label: 'Comp. Datos' }
+];
+
+const PROXIMAS_COLUMNS: ColumnDef[] = [
+    { key: 'fecha_limite_liquidacion', label: 'Límite Liq.' },
+    { key: 'dias_restantes', label: 'Plazo Restante' },
+    { key: 'cliente', label: 'Cliente' },
+    { key: 'situacion', label: 'Situación' },
+    { key: 'fecha_baja', label: 'Fecha Baja' },
+    { key: 'tipo_pago', label: 'Pago' },
+    { key: 'numero_poliza', label: 'Póliza' },
+    { key: 'fecha_cobro', label: 'Fecha Cobro' },
+    { key: 'fecha_efecto', label: 'Fecha Efecto' },
+    { key: 'producto', label: 'Producto' },
+    { key: 'prima_neta', label: 'Prima Neta' },
+    { key: 'prima_total', label: 'Prima Total' },
+    { key: 'porcentaje_comision', label: '% Comis.' },
+    { key: 'neto_comision', label: 'Neto Comis.' },
+    { key: 'importe_liquidar', label: 'Liq. Aseguradora' },
+    { key: 'falta_fecha_baja', label: 'Observaciones' }
+];
+
+const SETTLEMENT_COLUMNS: ColumnDef[] = [
+    { key: 'settlementLabel', label: 'Mes Liq.' },
+    { key: 'cliente', label: 'Cliente' },
+    { key: 'situacion', label: 'Situación' },
+    { key: 'fecha_baja', label: 'Fecha Baja' },
+    { key: 'tipo_pago', label: 'Pago' },
+    { key: 'numero_poliza', label: 'Póliza' },
+    { key: 'fecha_efecto', label: 'Fecha Efecto' },
+    { key: 'producto', label: 'Producto' },
+    { key: 'prima_neta', label: 'Prima Neta' },
+    { key: 'prima_total', label: 'Prima Total' },
+    { key: 'porcentaje_comision', label: '% Comis.' },
+    { key: 'neto_comision', label: 'Neto Comis.' },
+    { key: 'comprobacion_prima', label: 'Comp. Prima' },
+    { key: 'importe_liquidar', label: 'Liquidación' },
+    { key: 'comprobacion_datos', label: 'Comp. Datos' },
+    { key: 'falta_fecha_baja', label: 'Observaciones' }
+];
+
+const RENEWALS_COLUMNS: ColumnDef[] = [
+    { key: 'fecha_renovacion', label: 'Renueva' },
+    { key: 'anualidad', label: 'Anualidad' },
+    { key: 'aseguradora_nombre', label: 'Aseguradora' },
+    { key: 'cliente', label: 'Cliente' },
+    { key: 'situacion', label: 'Situación' },
+    { key: 'tipo_pago', label: 'Pago' },
+    { key: 'numero_poliza', label: 'Póliza' },
+    { key: 'fecha_efecto', label: 'Fecha Efecto' },
+    { key: 'producto', label: 'Producto' },
+    { key: 'prima_neta', label: 'Prima Neta' },
+    { key: 'prima_total', label: 'Prima Total' },
+    { key: 'porcentaje_comision', label: '% Comis.' },
+    { key: 'neto_comision', label: 'Neto Comis.' },
+    { key: 'comprobacion_prima', label: 'Comp. Prima' },
+    { key: 'importe_liquidar', label: 'Liquidación' },
+    { key: 'comprobacion_datos', label: 'Comp. Datos' },
+    { key: 'falta_fecha_baja', label: 'Observaciones' }
+];
 
 export default function ComisionesClientPage() {
     const [view, setView] = useState<ViewState>('LIST');
@@ -136,6 +336,40 @@ export default function ComisionesClientPage() {
         );
     });
 
+    // Estados de ordenación de tablas
+    const [detailsSort, setDetailsSort] = useState<SortState | null>({ column: 'cliente', direction: 'asc' });
+    const [proximasSort, setProximasSort] = useState<SortState | null>({ column: 'fecha_limite_liquidacion', direction: 'asc' });
+    const [settlementSort, setSettlementSort] = useState<SortState | null>({ column: 'settlementLabel', direction: 'asc' });
+    const [renewalsSort, setRenewalsSort] = useState<SortState | null>({ column: 'fecha_renovacion', direction: 'asc' });
+
+    const sortedRegistros = useMemo(() => {
+        return sortRecords(filteredRegistros, detailsSort, {
+            falta_fecha_baja: (r) => (faltaFechaBaja(r) ? 1 : 0),
+            fecha_baja: (r) => (faltaFechaBaja(r) ? '9999-99-99' : (r.fecha_baja || ''))
+        });
+    }, [filteredRegistros, detailsSort]);
+
+    const sortedProximas = useMemo(() => {
+        return sortRecords(proximasLiquidaciones, proximasSort, {
+            falta_fecha_baja: (r) => (r.falta_fecha_baja ? 1 : 0),
+            fecha_baja: (r) => (faltaFechaBaja(r) ? '9999-99-99' : (r.fecha_baja || ''))
+        });
+    }, [proximasLiquidaciones, proximasSort]);
+
+    const sortedSettlement = useMemo(() => {
+        return sortRecords(settlementResults, settlementSort, {
+            falta_fecha_baja: (r) => (r.falta_fecha_baja ? 1 : 0),
+            fecha_baja: (r) => (faltaFechaBaja(r) ? '9999-99-99' : (r.fecha_baja || '')),
+            settlementLabel: (r) => r.fecha_cobro || r.settlementLabel || ''
+        });
+    }, [settlementResults, settlementSort]);
+
+    const sortedRenewals = useMemo(() => {
+        return sortRecords(renewals, renewalsSort, {
+            falta_fecha_baja: (r) => (r.falta_fecha_baja ? 1 : 0)
+        });
+    }, [renewals, renewalsSort]);
+
     async function handleSelectCategory(cat: string) {
         setSelectedCategory(cat);
         setLoading(true);
@@ -249,7 +483,7 @@ export default function ComisionesClientPage() {
     }
 
     function handleExportRenewals() {
-        const data = renewals.map(reg => ({
+        const data = sortedRenewals.map(reg => ({
             'Fecha Renovación': formatDate(reg.fecha_renovacion),
             'Anualidad': reg.anualidad,
             'Aseguradora': reg.aseguradora_nombre,
@@ -281,7 +515,7 @@ export default function ComisionesClientPage() {
     function handleExportData() {
         if (!selectedAseguradora) return;
 
-        const dataToExport = filteredRegistros.map(reg => ({
+        const dataToExport = sortedRegistros.map(reg => ({
             'Cliente': reg.cliente,
             'Situación': reg.situacion,
             'Tipo de Pago': reg.tipo_pago,
@@ -550,21 +784,23 @@ export default function ComisionesClientPage() {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                                            {[
-                                                'Renueva', 'Anualidad', 'Aseguradora', 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Producto', 'Prima Neta', 'Prima Total',
-                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos', 'Observaciones'
-                                            ].map(h => (
-                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                            {RENEWALS_COLUMNS.map(col => (
+                                                <SortHeader
+                                                    key={col.key}
+                                                    label={col.label}
+                                                    column={col.key}
+                                                    currentSort={renewalsSort}
+                                                    onSort={(k) => setRenewalsSort(prev => toggleSort(prev, k))}
+                                                />
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {loading ? (
                                             <tr><td colSpan={17} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">Buscando...</td></tr>
-                                        ) : renewals.length === 0 ? (
+                                        ) : sortedRenewals.length === 0 ? (
                                             <tr><td colSpan={17} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">No hay pólizas que renueven en este intervalo.</td></tr>
-                                        ) : renewals.map((reg, idx) => (
+                                        ) : sortedRenewals.map((reg, idx) => (
                                             <tr key={`${reg.id}-${reg.fecha_renovacion}-${idx}`} className={cn("transition-colors text-slate-800 dark:text-slate-200", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
                                                 <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-primary dark:text-secondary">{formatDate(reg.fecha_renovacion)}</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] text-slate-500">{reg.anualidad}ª</td>
@@ -705,17 +941,19 @@ export default function ComisionesClientPage() {
                                     <table className="w-full text-left border-collapse" id="proximas-liquidaciones-table">
                                         <thead>
                                             <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                                                {[
-                                                    'Límite Liq.', 'Plazo Restante', 'Cliente', 'Situación', 'Fecha Baja', 'Pago',
-                                                    'Póliza', 'Fecha Cobro', 'Fecha Efecto', 'Producto', 'Prima Neta',
-                                                    'Prima Total', '% Comis.', 'Neto Comis.', 'Liq. Aseguradora', 'Observaciones'
-                                                ].map(h => (
-                                                    <th key={h} className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                                {PROXIMAS_COLUMNS.map(col => (
+                                                    <SortHeader
+                                                        key={col.key}
+                                                        label={col.label}
+                                                        column={col.key}
+                                                        currentSort={proximasSort}
+                                                        onSort={(k) => setProximasSort(prev => toggleSort(prev, k))}
+                                                    />
                                                 ))}
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                            {proximasLiquidaciones.map((reg, idx) => (
+                                            {sortedProximas.map((reg, idx) => (
                                                 <tr key={idx} className={cn("transition-colors", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
                                                     <td className="px-4 py-3 font-bold text-slate-900 dark:text-white text-[10px] whitespace-nowrap">
                                                         {formatDate(reg.fecha_limite_liquidacion)}
@@ -832,17 +1070,19 @@ export default function ComisionesClientPage() {
                                 <table className="w-full text-left border-collapse" id="settlement-table">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
-                                            {[
-                                                'Mes Liq.', 'Cliente', 'Situación', 'Fecha Baja', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Producto', 'Prima Neta', 'Prima Total',
-                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos', 'Observaciones'
-                                            ].map(h => (
-                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                            {SETTLEMENT_COLUMNS.map(col => (
+                                                <SortHeader
+                                                    key={col.key}
+                                                    label={col.label}
+                                                    column={col.key}
+                                                    currentSort={settlementSort}
+                                                    onSort={(k) => setSettlementSort(prev => toggleSort(prev, k))}
+                                                />
                                             ))}
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {settlementResults.map((reg, idx) => (
+                                        {sortedSettlement.map((reg, idx) => (
                                             <tr key={idx} className={cn("transition-colors", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
                                                 <td className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-[9px] uppercase" title={reg.fecha_cobro ? `Fecha cobro: ${formatDate(reg.fecha_cobro)}` : undefined}>{reg.settlementLabel}</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-slate-800 dark:text-slate-200">{reg.cliente}</td>
@@ -963,12 +1203,14 @@ export default function ComisionesClientPage() {
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                                             <th className="w-8"></th>
-                                            {[
-                                                'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto', 'Fecha Baja',
-                                                'Producto', 'Prima Neta', 'Prima Total',
-                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
-                                            ].map(h => (
-                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                            {DETAILS_COLUMNS.map(col => (
+                                                <SortHeader
+                                                    key={col.key}
+                                                    label={col.label}
+                                                    column={col.key}
+                                                    currentSort={detailsSort}
+                                                    onSort={(k) => setDetailsSort(prev => toggleSort(prev, k))}
+                                                />
                                             ))}
                                             <th className="px-4 py-4"></th>
                                         </tr>
@@ -997,12 +1239,12 @@ export default function ComisionesClientPage() {
                                         )}
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                                        {filteredRegistros.length === 0 && !isAddingNew ? (
+                                        {sortedRegistros.length === 0 && !isAddingNew ? (
                                             <tr>
                                                 <td colSpan={16} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">No hay registros encontrados.</td>
                                             </tr>
                                         ) : (
-                                            filteredRegistros.map((reg) => (
+                                            sortedRegistros.map((reg) => (
                                                 <React.Fragment key={reg.id}>
                                                     <tr
                                                         onClick={() => {

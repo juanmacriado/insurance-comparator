@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.9 · 17/10/2026**
+> **Versión 1.10 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.10 | 18/10/2026 | Ordenación interactiva por columnas en todas las tablas de datos (Detalle de registros, Próximas liquidaciones, Liquidación de comisiones y Previsión de renovaciones) con detección inteligente de tipos (numérico, fechas, texto) e inclusión del orden activo en las exportaciones a Excel. |
 | 1.9 | 17/10/2026 | Selector de fechas de liquidación por días concretos (`type="date"`). Configuración de `periodo_liquidacion_dias` en aseguradoras y panel de **Próximas Liquidaciones (Próximo Mes)** en el dashboard con exportación a Excel. |
 | 1.0 | 17/10/2026 | Primera documentación completa de la aplicación. |
 | 1.1 | 17/10/2026 | Reorganización: Parte I (estado actual) y Parte II (evolutivos). EV-01 a EV-06 de Gestión de comisiones. |
