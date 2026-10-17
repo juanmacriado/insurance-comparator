@@ -157,6 +157,7 @@ export function validateRegistro(input: Record<string, any>): RegistroValidation
 
 export type LineaLiquidacion<R> = R & {
     mes_liquidacion: string;   // 'YYYY-MM'
+    fecha_cobro?: string;      // 'YYYY-MM-DD' (cuando se calcula por días concretos)
     settlementLabel: string;   // 'Ene 2026'
     /** De BAJA sin fecha de baja: se incluye por precaución y se destaca en el informe. */
     falta_fecha_baja: boolean;
@@ -194,32 +195,76 @@ function activaEnMes(fechaBaja: YMD | null, y: number, m: number) {
 }
 
 /**
- * Calcula las líneas de liquidación entre dos meses naturales (incluidos).
+ * Calcula las líneas de liquidación entre dos fechas ('YYYY-MM-DD') o dos meses ('YYYY-MM').
  *
- * Regla: una póliza genera una línea por cada mes del periodo en el que
- *  1) le corresponde un cobro según su tipo de pago (mes de efecto + múltiplos
- *     de 12/6/3/1 meses), y
- *  2) estuvo de alta al menos parte de ese mes.
+ * 1. Modo fechas exactas ('YYYY-MM-DD'):
+ *    - Cada póliza genera un cobro en la fecha exacta que le corresponde por su fecha de efecto
+ *      (día del mes de efecto) y periodicidad (cada 12/6/3/1 meses).
+ *    - Solo se incluyen los cobros cuya fecha exacta cae dentro de [desde, hasta].
+ *    - Si la póliza está de BAJA con fecha de baja conocida, solo se incluye si la baja es posterior o igual a la fecha de cobro.
+ *    - Si la póliza está de BAJA sin fecha de baja, se incluye por precaución con `falta_fecha_baja = true`.
  *
- * La situación ACTUAL no excluye a la póliza: una póliza hoy de BAJA aparece en
- * los meses del periodo anteriores a su fecha de baja.
- *
- * Póliza de BAJA SIN fecha de baja: no se puede saber hasta cuándo estuvo de alta,
- * así que se incluye por precaución en sus meses de cobro (como si siguiera de alta)
- * con `falta_fecha_baja = true` para destacarla en el informe.
+ * 2. Modo meses completos ('YYYY-MM', para compatibilidad):
+ *    - Aplica la regla por meses naturales de §13.3.
  */
 export function calcularLiquidacion<R extends Record<string, any>>(
     registros: R[],
-    mesInicio: string,
-    mesFin: string,
+    desde: string,
+    hasta: string,
 ): ResultadoLiquidacion<R> {
-    const inicio = parseISOMonth(mesInicio);
-    const fin = parseISOMonth(mesFin);
-    if (!inicio || !fin) throw new Error('Periodo de liquidación no válido.');
+    const isMonthRange = parseISOMonth(desde) !== null && parseISODate(desde) === null &&
+                         parseISOMonth(hasta) !== null && parseISODate(hasta) === null;
 
-    const desdeIdx = monthIndex(inicio.y, inicio.m);
-    const hastaIdx = monthIndex(fin.y, fin.m);
-    if (desdeIdx > hastaIdx) throw new Error('El mes de inicio es posterior al mes de fin.');
+    if (isMonthRange) {
+        const inicio = parseISOMonth(desde)!;
+        const fin = parseISOMonth(hasta)!;
+        const desdeIdx = monthIndex(inicio.y, inicio.m);
+        const hastaIdx = monthIndex(fin.y, fin.m);
+        if (desdeIdx > hastaIdx) throw new Error('El mes de inicio es posterior al mes de fin.');
+
+        const lineas: LineaLiquidacion<R>[] = [];
+        const avisos: AvisoLiquidacion[] = [];
+        const aviso = (reg: R, motivo: string) =>
+            avisos.push({ id: reg.id, cliente: reg.cliente ?? '', numero_poliza: reg.numero_poliza ?? '', motivo });
+
+        for (const reg of registros) {
+            const tipoPago = normalizeCatalogValue(reg.tipo_pago);
+            const situacion = normalizeCatalogValue(reg.situacion);
+            const efecto = parseISODate(reg.fecha_efecto);
+            const baja = parseISODate(reg.fecha_baja);
+
+            if (!efecto) { aviso(reg, 'Sin fecha de efecto válida'); continue; }
+            if (!isTipoPago(tipoPago)) { aviso(reg, `Tipo de pago no reconocido: "${reg.tipo_pago ?? ''}"`); continue; }
+            if (!isSituacion(situacion)) { aviso(reg, `Situación no reconocida: "${reg.situacion ?? ''}"`); continue; }
+
+            const sinFechaBaja = situacion === 'BAJA' && !baja;
+            const intervalo = MESES_ENTRE_COBROS[tipoPago];
+            const efectoIdx = monthIndex(efecto.y, efecto.m);
+            const bajaEfectiva = situacion === 'BAJA' ? baja : null; // null si falta → se trata como activa
+
+            for (let idx = Math.max(desdeIdx, efectoIdx); idx <= hastaIdx; idx++) {
+                if ((idx - efectoIdx) % intervalo !== 0) continue;
+                const { y, m } = fromMonthIndex(idx);
+                if (!activaEnMes(bajaEfectiva, y, m)) break; // a partir de aquí ya está de baja
+                lineas.push({ ...reg, mes_liquidacion: `${y}-${pad(m)}`, settlementLabel: monthLabel(y, m), falta_fecha_baja: sinFechaBaja });
+            }
+        }
+
+        lineas.sort((a, b) =>
+            a.mes_liquidacion.localeCompare(b.mes_liquidacion) ||
+            String(a.cliente ?? '').localeCompare(String(b.cliente ?? '')));
+
+        return { lineas, avisos };
+    }
+
+    // Modo rango de fechas exactas ('YYYY-MM-DD')
+    const d = parseISODate(desde);
+    const h = parseISODate(hasta);
+    if (!d || !h) throw new Error('Periodo de liquidación no válido.');
+    if (desde > hasta) throw new Error('La fecha inicial es posterior a la final.');
+
+    const desdeIdx = monthIndex(d.y, d.m);
+    const hastaIdx = monthIndex(h.y, h.m);
 
     const lineas: LineaLiquidacion<R>[] = [];
     const avisos: AvisoLiquidacion[] = [];
@@ -239,18 +284,33 @@ export function calcularLiquidacion<R extends Record<string, any>>(
         const sinFechaBaja = situacion === 'BAJA' && !baja;
         const intervalo = MESES_ENTRE_COBROS[tipoPago];
         const efectoIdx = monthIndex(efecto.y, efecto.m);
-        const bajaEfectiva = situacion === 'BAJA' ? baja : null; // null si falta → se trata como activa
+        const bajaStr = (situacion === 'BAJA' && baja) ? toISODate(baja) : null;
 
         for (let idx = Math.max(desdeIdx, efectoIdx); idx <= hastaIdx; idx++) {
             if ((idx - efectoIdx) % intervalo !== 0) continue;
             const { y, m } = fromMonthIndex(idx);
-            if (!activaEnMes(bajaEfectiva, y, m)) break; // a partir de aquí ya está de baja
-            lineas.push({ ...reg, mes_liquidacion: `${y}-${pad(m)}`, settlementLabel: monthLabel(y, m), falta_fecha_baja: sinFechaBaja });
+            const cobroDay = Math.min(efecto.d, daysInMonth(y, m));
+            const fechaCobro = toISODate({ y, m, d: cobroDay });
+
+            // Si está de baja con fecha conocida y la fecha de baja es anterior a este cobro,
+            // ya no genera más cobros en meses futuros
+            if (bajaStr && bajaStr < fechaCobro) break;
+
+            // Solo cobros que caen estrictamente dentro del intervalo [desde, hasta]
+            if (fechaCobro < desde || fechaCobro > hasta) continue;
+
+            lineas.push({
+                ...reg,
+                mes_liquidacion: `${y}-${pad(m)}`,
+                fecha_cobro: fechaCobro,
+                settlementLabel: monthLabel(y, m),
+                falta_fecha_baja: sinFechaBaja,
+            });
         }
     }
 
     lineas.sort((a, b) =>
-        a.mes_liquidacion.localeCompare(b.mes_liquidacion) ||
+        (a.fecha_cobro ?? a.mes_liquidacion).localeCompare(b.fecha_cobro ?? b.mes_liquidacion) ||
         String(a.cliente ?? '').localeCompare(String(b.cliente ?? '')));
 
     return { lineas, avisos };

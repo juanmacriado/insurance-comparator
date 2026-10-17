@@ -105,6 +105,28 @@ assert.equal(r13.lineas.length, 0);
 assert.equal(r13.avisos.length, 1);
 console.log('✓ P13: Tipo de pago no reconocido genera aviso');
 
+// P14: Días concretos (15/01/2026 a 15/02/2026) con mensual efecto 10/06/2025 -> Solo cobro de Feb (10/02/2026)
+const r14 = L([{ id: 1, tipo_pago: 'MENSUAL', situacion: 'ALTA', fecha_efecto: '2025-06-10' }], '2026-01-15', '2026-02-15');
+assert.deepEqual(r14.lineas.map((l: any) => l.fecha_cobro), ['2026-02-10']);
+console.log('✓ P14: Rango por días concretos incluye solo cobros dentro del intervalo');
+
+// P15: Días concretos (01/01/2026 a 15/01/2026) con efecto 20/01/2026 -> 0 líneas (cobro posterior al intervalo)
+const r15 = L([{ id: 1, tipo_pago: 'MENSUAL', situacion: 'ALTA', fecha_efecto: '2026-01-20' }], '2026-01-01', '2026-01-15');
+assert.equal(r15.lineas.length, 0);
+console.log('✓ P15: Cobro fuera del rango de días concretos no se incluye');
+
+// P16: Días concretos con baja antes del cobro (efecto 25/06/2025, baja 20/02/2026, periodo 01/01/2026 a 31/03/2026)
+// Cobro 25/01/2026 es previo a la baja (incluido). Cobro 25/02/2026 es posterior a la baja (excluido).
+const r16 = L([{ id: 1, tipo_pago: 'MENSUAL', situacion: 'BAJA', fecha_efecto: '2025-06-25', fecha_baja: '2026-02-20' }], '2026-01-01', '2026-03-31');
+assert.deepEqual(r16.lineas.map((l: any) => l.fecha_cobro), ['2026-01-25']);
+console.log('✓ P16: En rango por días, baja previa al día de cobro excluye el cobro');
+
+// P17: Días concretos con BAJA sin fecha -> incluida por precaución
+const r17 = L([{ id: 1, tipo_pago: 'MENSUAL', situacion: 'BAJA', fecha_efecto: '2025-06-10' }], '2026-01-01', '2026-02-15');
+assert.deepEqual(r17.lineas.map((l: any) => l.fecha_cobro), ['2026-01-10', '2026-02-10']);
+assert.ok(r17.lineas.every((l: any) => l.falta_fecha_baja === true));
+console.log('✓ P17: En rango por días, BAJA sin fecha se incluye con marca falta_fecha_baja');
+
 console.log('\n--- Comprobando Renovaciones (R01 a R08) ---');
 
 // R01 a R05 en lote

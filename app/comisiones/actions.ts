@@ -35,10 +35,10 @@ export async function removeRegistro(id: number) {
     return await deleteRegistro(id);
 }
 
-/** Liquidación de una aseguradora entre dos meses naturales ('YYYY-MM', ambos incluidos). */
-export async function fetchLiquidacion(aseguradoraId: number, mesInicio: string, mesFin: string) {
+/** Liquidación de una aseguradora entre dos fechas ('YYYY-MM-DD' o meses 'YYYY-MM', ambos incluidos). */
+export async function fetchLiquidacion(aseguradoraId: number, desde: string, hasta: string) {
     const registros = await getRegistros(aseguradoraId, null, null);
-    return calcularLiquidacion(registros, mesInicio, mesFin);
+    return calcularLiquidacion(registros, desde, hasta);
 }
 
 /** Pólizas de alta de todas las aseguradoras que renuevan entre dos fechas ('YYYY-MM-DD'). */

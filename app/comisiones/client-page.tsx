@@ -27,8 +27,11 @@ export default function ComisionesClientPage() {
     const [editingData, setEditingData] = useState<any>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [showSettlementModal, setShowSettlementModal] = useState(false);
-    // Liquidación por meses naturales ('YYYY-MM')
-    const [settlementRange, setSettlementRange] = useState({ start: currentMonthISO(), end: currentMonthISO() });
+    // Liquidación por fechas ('YYYY-MM-DD')
+    const [settlementRange, setSettlementRange] = useState(() => {
+        const today = todayISO();
+        return { start: `${today.slice(0, 7)}-01`, end: today };
+    });
     const [settlementResults, setSettlementResults] = useState<any[]>([]);
     const [settlementWarnings, setSettlementWarnings] = useState<AvisoLiquidacion[]>([]);
     const [settlementError, setSettlementError] = useState<string | null>(null);
@@ -153,7 +156,7 @@ export default function ComisionesClientPage() {
     async function handleGenerateSettlement() {
         if (!settlementRange.start || !settlementRange.end) return;
         if (settlementRange.start > settlementRange.end) {
-            setSettlementError('El mes de inicio no puede ser posterior al mes de fin.');
+            setSettlementError('La fecha de inicio no puede ser posterior a la fecha de fin.');
             return;
         }
 
@@ -333,7 +336,7 @@ export default function ComisionesClientPage() {
                         <div className="flex justify-between items-start mb-10">
                             <div>
                                 <h2 className="text-3xl font-display font-bold uppercase tracking-tight leading-none text-secondary">Periodo de Liquidación</h2>
-                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] mt-3">Meses naturales, ambos incluidos</p>
+                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] mt-3">Selecciona el rango de fechas</p>
                             </div>
                             <button
                                 onClick={() => setShowSettlementModal(false)}
@@ -345,26 +348,26 @@ export default function ComisionesClientPage() {
 
                         <div className="space-y-8 mb-10">
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Mes de Inicio</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha de Inicio</label>
                                 <input
-                                    type="month"
+                                    type="date"
                                     value={settlementRange.start}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, start: e.target.value })}
                                     className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Mes de Fin</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha de Fin</label>
                                 <input
-                                    type="month"
+                                    type="date"
                                     value={settlementRange.end}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, end: e.target.value })}
                                     className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                             <p className="text-[11px] text-slate-300 leading-relaxed">
-                                Incluye cada póliza en los meses del periodo en que le toca cobro (según su tipo de pago)
-                                y estuvo de alta al menos parte del mes, aunque hoy esté de baja.
+                                Incluye cada póliza en las fechas del periodo en que le corresponde cobro (según su tipo de pago y fecha de efecto)
+                                y estuvo de alta, aunque hoy esté de baja.
                             </p>
                             {settlementError && (
                                 <p className="text-sm font-bold text-red-300">{settlementError}</p>
@@ -574,7 +577,7 @@ export default function ComisionesClientPage() {
                                 <div>
                                     <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight uppercase">Liquidación de Comisiones</h2>
                                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                                        Periodo: {formatMonth(settlementRange.start)} - {formatMonth(settlementRange.end)} · {settlementResults.length} líneas
+                                        Periodo: {formatDate(settlementRange.start)} - {formatDate(settlementRange.end)} · {settlementResults.length} líneas
                                     </div>
                                 </div>
                             </div>
@@ -623,7 +626,7 @@ export default function ComisionesClientPage() {
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {settlementResults.map((reg, idx) => (
                                             <tr key={idx} className={cn("transition-colors", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
-                                                <td className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-[9px] uppercase">{reg.settlementLabel}</td>
+                                                <td className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-[9px] uppercase" title={reg.fecha_cobro ? `Fecha cobro: ${formatDate(reg.fecha_cobro)}` : undefined}>{reg.settlementLabel}</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-slate-800 dark:text-slate-200">{reg.cliente}</td>
                                                 <td className="px-4 py-3"><SituacionBadge situacion={reg.situacion} /></td>
                                                 <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap"><FechaBajaCell reg={reg} /></td>
@@ -896,7 +899,9 @@ export default function ComisionesClientPage() {
 function formatDate(dateStr: string) {
     if (!dateStr) return '-';
     if (!dateStr.includes('-')) return dateStr;
-    const [year, month, day] = dateStr.split('-');
+    const parts = dateStr.split('-');
+    if (parts.length === 2) return `${parts[1]}/${parts[0]}`;
+    const [year, month, day] = parts;
     return `${day}/${month}/${year}`;
 }
 
