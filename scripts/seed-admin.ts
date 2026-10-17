@@ -1,6 +1,6 @@
 
 import 'dotenv/config';
-import { sql } from '@vercel/postgres';
+import { sql } from '../lib/sql';
 import bcrypt from 'bcryptjs';
 
 async function seedAdmin() {

@@ -1,6 +1,6 @@
 'use server';
 
-import { sql } from '@vercel/postgres';
+import { sql } from '../sql';
 
 export interface SavedPrompt {
     id: number;

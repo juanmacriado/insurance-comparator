@@ -1,7 +1,7 @@
 
 'use server';
 
-import { sql } from '@vercel/postgres';
+import { sql } from './sql';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 

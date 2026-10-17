@@ -1,7 +1,7 @@
 
 'use server';
 
-import { sql } from '@vercel/postgres';
+import { sql } from './sql';
 import bcrypt from 'bcryptjs';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/auth';

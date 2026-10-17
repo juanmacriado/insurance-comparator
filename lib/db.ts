@@ -1,5 +1,5 @@
 
-import { sql } from '@vercel/postgres';
+import { sql } from './sql';
 
 // Migración ligera e idempotente: añade las columnas nuevas si aún no existen.
 // Se ejecuta una vez por instancia del servidor, antes de la primera consulta de registros.

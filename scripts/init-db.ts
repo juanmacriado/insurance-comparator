@@ -1,5 +1,5 @@
 import 'dotenv/config'; // Load env vars
-import { sql } from '@vercel/postgres';
+import { sql } from '../lib/sql';
 
 async function initDB() {
   try {

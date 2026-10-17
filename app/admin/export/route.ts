@@ -1,5 +1,5 @@
 import { auth } from '@/auth';
-import { sql } from '@vercel/postgres';
+import { sql } from '@/lib/sql';
 import { toCSV, createZip } from '@/lib/csv-zip';
 
 export const dynamic = 'force-dynamic';

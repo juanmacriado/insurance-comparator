@@ -1,0 +1,37 @@
+# Base de datos LOCAL para desarrollo (no se usa en Vercel).
+# Uso:  npm run db:local:up   →   npm run db:local:seed   →   npm run dev
+#
+# - postgres: Postgres 16 con los datos en un volumen local.
+# - neon-proxy: proxy de Neon para desarrollo local. La app usa @vercel/postgres (driver
+#   serverless de Neon), que habla por HTTP (sql`...`) y por WebSocket (sql.query());
+#   este proxy atiende ambas vías en el puerto 4444 y las pasa al Postgres local.
+#   Receta documentada por Neon: https://neon.com/guides/local-development-with-neon
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: xeoris
+    ports:
+      - "5432:5432"
+    volumes:
+      - xeoris_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d xeoris"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    environment:
+      PG_CONNECTION_STRING: postgres://postgres:postgres@postgres:5432/xeoris
+    ports:
+      - "4444:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  xeoris_pg_data:
