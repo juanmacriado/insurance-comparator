@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.10 · 18/10/2026**
+> **Versión 1.11 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.11 | 18/10/2026 | EV-08 en producción: ruta `/api/renovaciones` desplegada y tarea programada de Claude creada (envío provisional solo a juanma.criado@xeoris.com). Prueba real: 34 pólizas, 11 sin fecha de baja, 50.942,69 €. |
 | 1.10 | 18/10/2026 | Ordenación interactiva por columnas en todas las tablas de datos (Detalle de registros, Próximas liquidaciones, Liquidación de comisiones y Previsión de renovaciones) con detección inteligente de tipos (numérico, fechas, texto) e inclusión del orden activo en las exportaciones a Excel. |
 | 1.9 | 17/10/2026 | Selector de fechas de liquidación por días concretos (`type="date"`). Configuración de `periodo_liquidacion_dias` en aseguradoras y panel de **Próximas Liquidaciones (Próximo Mes)** en el dashboard con exportación a Excel. |
 | 1.0 | 17/10/2026 | Primera documentación completa de la aplicación. |
@@ -449,7 +450,13 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 - Variable de entorno en Vercel (Production): `RENEWALS_API_TOKEN` = cadena aleatoria de 32+ caracteres (p. ej. `openssl rand -base64 32`). **No guardarla en el repositorio.**
 - En `/admin/users`, bloque informativo con enlace **Ver datos del informe** (`/api/renovaciones?meses=3`).
 
-**Parte Claude (se configura cuando la ruta esté en producción)**
+**Parte Claude — configurada el 18/10/2026**
+- Tarea programada **"Informe semanal de renovaciones"** (id `trig_014B6qiMLGyuHTaYNxWGtMks`), lunes 07:58 hora de Madrid, modo automático, aviso por email al terminar cada ejecución. Se gestiona desde la lista de tareas programadas de Claude.
+- **Destinatario provisional: solo juanma.criado@xeoris.com.** Tras validar, ampliar a los cuatro destinatarios editando las instrucciones de la tarea.
+- Lección aprendida: la herramienta de lectura web de Claude **no devuelve el contenido literal** (límite de cita), pero sí una **extracción estructurada** a tabla. Por eso la tarea pide la tabla y después comprueba nº de filas, nº de avisos y suma de primas contra la línea `CONTROL` antes de enviar.
+- Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ comparten nº de póliza con un registro de alta (probable anualidad anterior): completar su fecha de baja las quitará del informe.
+
+**Diseño original (referencia)**
 - Tarea programada: **lunes a las 07:58 (hora de Madrid)**.
 - Destinatarios: helena.sansalvador@xeoris.com, omar.abarkan@xeoris.com, ricardo.sanchez@xeoris.com, juanma.criado@xeoris.com.
 - Instrucciones de la tarea (la clave se sustituye al crearla; no se escribe en este documento):
