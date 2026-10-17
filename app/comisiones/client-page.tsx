@@ -831,21 +831,47 @@ export default function ComisionesClientPage() {
                                                     </tr>
                                                     {expandedRow === reg.id && (
                                                         <tr>
-                                                            <td colSpan={16} className="px-4 py-2 bg-primary/5 dark:bg-slate-800/50">
-                                                                <div className="mb-4 p-2">
-                                                                    <FormFields data={editingData} onChange={setEditingData} errors={formErrors} />
-                                                                    <div className="flex justify-end gap-2 mt-4">
-                                                                        <button
-                                                                            onClick={() => setExpandedRow(null)}
-                                                                            className="px-6 py-2 rounded-xl font-bold uppercase tracking-widest text-[9px] text-slate-500 hover:text-primary dark:hover:text-white transition-colors"
-                                                                        >
-                                                                            Cancelar
-                                                                        </button>
+                                                            <td colSpan={16} className="px-6 py-6 bg-slate-50 dark:bg-slate-900/90 border-y-2 border-primary/20 shadow-inner">
+                                                                <div 
+                                                                    className="max-w-5xl"
+                                                                    onKeyDown={(e) => {
+                                                                        if (e.key === 'Enter') {
+                                                                            e.preventDefault();
+                                                                            handleSaveRow(reg.id);
+                                                                        }
+                                                                    }}
+                                                                >
+                                                                    <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="font-display font-bold uppercase tracking-wider text-xs text-primary dark:text-secondary">
+                                                                                Modificar Registro
+                                                                            </span>
+                                                                            <span className="text-[11px] font-mono font-bold text-slate-600 dark:text-slate-300 bg-white dark:bg-slate-800 px-2 py-0.5 rounded border border-slate-200 dark:border-slate-700">
+                                                                                {reg.numero_poliza || reg.cliente}
+                                                                            </span>
+                                                                        </div>
                                                                         <button
                                                                             onClick={() => handleSaveRow(reg.id)}
-                                                                            className="bg-primary text-secondary px-6 py-2 rounded-xl font-bold uppercase tracking-widest text-[9px] flex items-center gap-1.5 hover:shadow-lg transition-all"
+                                                                            className="bg-secondary text-primary hover:bg-yellow-400 px-5 py-2 rounded-xl font-black uppercase tracking-wider text-xs flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all"
                                                                         >
-                                                                            <Save className="w-3 h-3" /> Guardar Cambios
+                                                                            <Save className="w-3.5 h-3.5" /> Actualizar Registro
+                                                                        </button>
+                                                                    </div>
+
+                                                                    <FormFields data={editingData} onChange={setEditingData} errors={formErrors} />
+
+                                                                    <div className="flex items-center justify-start gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                                                        <button
+                                                                            onClick={() => handleSaveRow(reg.id)}
+                                                                            className="bg-secondary text-primary hover:bg-yellow-400 px-6 py-2.5 rounded-xl font-black uppercase tracking-wider text-xs flex items-center gap-2 shadow-md hover:shadow-lg transition-all"
+                                                                        >
+                                                                            <Save className="w-4 h-4" /> Actualizar Registro
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setExpandedRow(null)}
+                                                                            className="px-5 py-2.5 rounded-xl font-bold uppercase tracking-wider text-xs text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors border border-slate-300 dark:border-slate-600"
+                                                                        >
+                                                                            Cancelar
                                                                         </button>
                                                                     </div>
                                                                 </div>
