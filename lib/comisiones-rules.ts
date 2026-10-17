@@ -131,7 +131,11 @@ export function validateRegistro(input: Record<string, any>): RegistroValidation
     }
 
     const efecto = parseISODate(value.fecha_efecto);
-    if (!efecto) errors.fecha_efecto = 'La fecha de efecto es obligatoria.';
+    if (!efecto) {
+        errors.fecha_efecto = 'La fecha de efecto es obligatoria.';
+    } else if (!value.año) {
+        value.año = efecto.y;
+    }
 
     if (value.situacion === 'BAJA') {
         const baja = parseISODate(value.fecha_baja);
@@ -283,8 +287,9 @@ export function calcularRenovaciones<R extends Record<string, any>>(
 
     for (const reg of registros) {
         const situacion = normalizeCatalogValue(reg.situacion);
-        const sinFechaBaja = faltaFechaBaja(reg);
-        const deAlta = situacion === 'ALTA' && !reg.fecha_baja;
+        const baja = parseISODate(reg.fecha_baja);
+        const sinFechaBaja = situacion === 'BAJA' && !baja;
+        const deAlta = situacion === 'ALTA' && !baja;
         if (!deAlta && !sinFechaBaja) continue;
         const efecto = parseISODate(reg.fecha_efecto);
         if (!efecto) continue;

@@ -242,7 +242,7 @@ export default function ComisionesClientPage() {
             'Tipo de Pago': reg.tipo_pago,
             'Nº Póliza': reg.numero_poliza,
             'Fecha Efecto': formatDate(reg.fecha_efecto),
-            'Fecha Baja': formatDate(reg.fecha_baja),
+            'Fecha Baja': faltaFechaBaja(reg) ? 'FALTA' : formatDate(reg.fecha_baja),
             'Producto': reg.producto,
             'Prima Neta': reg.prima_neta,
             'Prima Total': reg.prima_total,

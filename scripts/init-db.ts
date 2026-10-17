@@ -31,7 +31,8 @@ async function initDB() {
         neto_comision DOUBLE PRECISION,
         comprobacion_prima DOUBLE PRECISION,
         importe_liquidar DOUBLE PRECISION,
-        comprobacion_datos DOUBLE PRECISION
+        comprobacion_datos DOUBLE PRECISION,
+        fecha_baja TEXT
       );
     `;
 

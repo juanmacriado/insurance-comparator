@@ -72,6 +72,7 @@ export async function GET() {
     const zip = createZip(files, now);
     return new Response(new Blob([zip as BlobPart], { type: 'application/zip' }), {
         headers: {
+            'Content-Type': 'application/zip',
             'Content-Disposition': `attachment; filename="xeoris_datos_${stamp}.zip"`,
             'Cache-Control': 'no-store',
         },

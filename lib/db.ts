@@ -88,6 +88,7 @@ async function addRegistro(registro: any) {
 
   const compPrima = (pNeta * (pct / 100)) - neto;
   const compDatos = (pTotal - (pNeta * (pct / 100))) - impLiq;
+  const año = registro.año || (registro.fecha_efecto ? Number(String(registro.fecha_efecto).slice(0, 4)) : 2025);
 
   const result = await sql`
     INSERT INTO registros_comisiones (
@@ -96,7 +97,7 @@ async function addRegistro(registro: any) {
       prima_total, porcentaje_comision, neto_comision, comprobacion_prima,
       importe_liquidar, comprobacion_datos, fecha_baja
     ) VALUES (
-      ${registro.aseguradora_id}, ${registro.año}, ${registro.tipo_registro},
+      ${registro.aseguradora_id}, ${año}, ${registro.tipo_registro},
       ${registro.cliente}, ${registro.situacion}, ${registro.tipo_pago},
       ${registro.numero_poliza}, ${registro.fecha_efecto}, ${registro.pago_hiscox},
       ${registro.producto}, ${registro.prima_neta}, ${registro.prima_total},
@@ -117,10 +118,12 @@ async function updateRegistro(id: number, registro: any) {
 
   const compPrima = (pNeta * (pct / 100)) - neto;
   const compDatos = (pTotal - (pNeta * (pct / 100))) - impLiq;
+  const año = registro.año || (registro.fecha_efecto ? Number(String(registro.fecha_efecto).slice(0, 4)) : 2025);
 
   await ensureSchema();
   await sql`
     UPDATE registros_comisiones SET
+      año = ${año},
       fecha_baja = ${registro.fecha_baja ?? null},
       cliente = ${registro.cliente},
       situacion = ${registro.situacion},
