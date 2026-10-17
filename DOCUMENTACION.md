@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.7 · 17/10/2026**
+> **Versión 1.8 · 17/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -17,6 +17,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 | 1.2 | 17/10/2026 | Pólizas de BAJA sin fecha de baja incluidas por precaución y resaltadas; misma regla para las cuatro periodicidades. |
 | 1.3 | 17/10/2026 | EV-07 descarga de copia de datos en ZIP. Nuevos evolutivos propuestos: entorno de pruebas, planes de pago y copias de seguridad, aviso semanal de renovaciones. |
 | 1.4 | 17/10/2026 | EV-08 informe semanal de renovaciones por correo (Vercel Cron + Resend), desarrollado. |
+| 1.8 | 17/10/2026 | Entorno de base de datos local (Docker + datos ficticios), §3. Acceso a BD centralizado en `lib/sql.ts`. Pruebas funcionales de la rama en navegador contra la base local: superadas. |
 | 1.7 | 17/10/2026 | Revisión del commit `b52ed0e` (refinamientos del otro IDE) frente a la especificación: conforme, con observaciones menores (§16). |
 | 1.6 | 17/10/2026 | EV-01 a EV-08 implementados en la rama `feature/comisiones-evolutivos` (commit pendiente de revisión por otro IDE antes de fusionar a `main`). Se retira el parche de referencia. |
 | 1.5 | 17/10/2026 | La Parte II pasa a especificación para implementar por otro IDE; código retirado del repositorio y guardado como parche de referencia en `docs/evolutivos/`. EV-08 rediseñado: tarea programada de Claude + ruta `/api/renovaciones` (sin servidor de correo en la app). |
@@ -137,7 +138,24 @@ npx tsx scripts/seed-admin.ts   # crea admin@admin.com / admin → cambiar de in
 npm run dev
 ```
 
-No hay script `tsx` declarado en `package.json`; los scripts se lanzan con `npx tsx`.
+Los scripts de mantenimiento se lanzan con `npx tsx` (o con los `npm run` de abajo).
+
+### Desarrollo local con base de datos propia (recomendado)
+Para probar sin tocar la base de datos real. Requiere **Docker Desktop** en el Mac.
+
+```bash
+npm install                 # una vez (o tras cambiar de rama)
+npm run db:local:up         # arranca Postgres + proxy de Neon (docker-compose.yml)
+npm run db:local:seed       # crea las tablas y carga datos FICTICIOS (borra los anteriores)
+npm run dev                 # http://localhost:3000
+```
+
+- **Configuración**: el fichero `.env.development.local` (no se sube a git) apunta a `postgres://postgres:postgres@localhost:5432/xeoris`. En `npm run dev` tiene prioridad sobre `.env.local`, que apunta a producción. Para volver a desarrollar contra la base real, renombrarlo.
+- **Usuarios de prueba**: `admin@local.test` / `admin-local` (admin) y `usuario@local.test` / `usuario-local` (user).
+- **Datos de prueba**: 12 pólizas ficticias en 2 aseguradoras, con fechas relativas al día de la carga: renovaciones próximas, nueva producción, bajas con y sin fecha, trimestral, semestral, un valor antiguo en minúsculas y un tipo de pago fuera de catálogo.
+- **Cómo funciona**: la app usa `@vercel/postgres` (driver serverless de Neon), que va por HTTP (`sql\`...\``) y por WebSocket (`sql.query()`), no por el protocolo normal de Postgres. `docker-compose.yml` añade el proxy local que documenta Neon (puerto 4444). `lib/local-postgres.ts` redirige el driver a ese proxy **solo si `POSTGRES_URL` es localhost**; en Vercel no hace nada. Todo el código importa `sql` desde **`lib/sql.ts`** (no directamente de `@vercel/postgres`), para que esa configuración se aplique siempre a la misma copia del driver.
+- **Seguridad**: `seed-local` se niega a ejecutarse si `POSTGRES_URL` no es localhost. Si se arranca `npm run dev` contra una base no local, la consola avisa de que los cambios afectarán a la base real.
+- **Otros**: `npm run test:rules` (pruebas de reglas), `npm run db:local:down` (parar; los datos se conservan en un volumen de Docker).
 
 ### Despliegue
 - El proyecto está enlazado a Vercel (`.vercel/project.json`). **No hay ningún YAML, workflow de CI, `vercel.json` ni Dockerfile** en el repositorio ni en su historial: el despliegue lo hace la integración Vercel–GitHub (push a `main`) o `vercel deploy`.
@@ -479,11 +497,20 @@ La rama incluye `scripts/test-comisiones-rules.ts` (`npx tsx scripts/test-comisi
 Revisada la rama `feature/comisiones-evolutivos` hasta el commit `b52ed0e` (refinamientos: "FALTA" en la columna Fecha Baja del Excel, año inferido de la fecha de efecto, `fecha_baja` en `init-db.ts`, `Content-Type` del ZIP y batería de pruebas ampliada).
 
 - **Resultado**: **conforme** con §13–§14. EV-01 a EV-08 presentes; compila (`tsc --noEmit`); las 28 pruebas pasan (P01–P13, R01–R08, V01–V07).
+- **Prueba funcional (17/10/2026)**, con Next.js en modo desarrollo, navegador real y base local con los datos ficticios:
+  - inicio de sesión ✓; lista de aseguradoras con el botón *Próximas Renovaciones* ✓;
+  - renovaciones a 2 meses: 6 pólizas, la de BAJA sin fecha en ámbar ✓;
+  - registros: desplegables, FALTA en las 2 bajas sin fecha ✓; validación (cliente obligatorio, tipo de pago obligatorio, fecha de baja obligatoria con BAJA) ✓; alta de un registro BAJA trimestral ✓;
+  - liquidación ene–mar 2026: 2 líneas correctas (trimestral en marzo; la baja del 20/02 solo en febrero) y aviso del tipo de pago `BIMESTRAL` ✓;
+  - descarga del ZIP: 4 CSV + LEEME, sin contraseñas ✓; `/api/renovaciones` → 401 sin clave, informe con clave ✓.
 - **Observaciones menores** (no bloquean):
   1. `lib/db.ts → updateRegistro` reescribe `año` con el valor que ya tenía el registro, así que **no cambia aunque se cambie el año de la fecha de efecto**. Decidir si en la edición el año debe seguir a la fecha de efecto (entonces calcularlo siempre de `fecha_efecto`) o mantenerse (entonces quitar esa línea).
   2. `lib/db.ts` usa `2025` como valor por defecto del año si faltara la fecha de efecto. Es inalcanzable (la fecha es obligatoria), pero conviene quitarlo para no esconder errores.
   3. El nombre del ZIP de EV-07 lleva la hora en **UTC**, no en hora de España.
-  4. **Pendiente**: prueba funcional en navegador con base de datos (local o de pruebas) antes de fusionar.
+  4. En `/api/renovaciones?formato=texto` el tipo de pago sale tal cual está guardado (p. ej. `anual` en minúsculas en registros antiguos); en pantalla se ve en mayúsculas. Conviene normalizarlo en la salida.
+  5. El subtítulo de *Próximas renovaciones* dice "Pólizas de alta…", pero también incluye, en ámbar, las de BAJA sin fecha.
+  6. Ya existente, no de estos cambios: tras iniciar sesión la URL se queda en `/login` aunque la sesión se crea bien.
+  7. **Pendiente**: prueba en la URL de prueba de Vercel antes de fusionar a `main`.
 
 ### Decisiones de negocio a validar
 1. **Baja el día 1**: excluye ese mes.
