@@ -155,10 +155,12 @@ assert.deepEqual(
 );
 console.log('✓ R06: Renovación cruzando fin de año');
 
-// R07: BAJA sin fecha -> incluida y marcada
+// R07: Una póliza de BAJA nunca renueva, tenga o no fecha de baja (decisión 18/10/2026)
 const renSin = R([{ id: 6, situacion: 'BAJA', fecha_efecto: '2024-11-15' }], '2026-10-17', '2026-12-31');
-assert.deepEqual(renSin.map((x: any) => [x.id, x.fecha_renovacion, x.falta_fecha_baja]), [[6, '2024-11-15'.replace('2024', '2026'), true]]);
-console.log('✓ R07: Baja sin fecha de baja aparece destacada');
+assert.deepEqual(renSin, []);
+const renCon = R([{ id: 7, situacion: 'BAJA', fecha_efecto: '2024-11-15', fecha_baja: '2026-01-10' }], '2026-10-17', '2026-12-31');
+assert.deepEqual(renCon, []);
+console.log('✓ R07: Las pólizas de BAJA (con o sin fecha de baja) no renuevan');
 
 // R08: No influye el tipo de pago (trimestral y semestral aparecen igual que anual)
 assert.equal(

@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.11 · 18/10/2026**
+> **Versión 1.12 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.12 | 18/10/2026 | Regla de renovaciones: una póliza de **BAJA nunca renueva**, tenga o no fecha de baja (antes las de BAJA sin fecha se incluían por precaución). Las liquidaciones mantienen la regla de precaución. |
 | 1.11 | 18/10/2026 | EV-08 en producción: ruta `/api/renovaciones` desplegada y tarea programada de Claude creada (envío provisional solo a juanma.criado@xeoris.com). Prueba real: 34 pólizas, 11 sin fecha de baja, 50.942,69 €. |
 | 1.10 | 18/10/2026 | Ordenación interactiva por columnas en todas las tablas de datos (Detalle de registros, Próximas liquidaciones, Liquidación de comisiones y Previsión de renovaciones) con detección inteligente de tipos (numérico, fechas, texto) e inclusión del orden activo en las exportaciones a Excel. |
 | 1.9 | 17/10/2026 | Selector de fechas de liquidación por días concretos (`type="date"`). Configuración de `periodo_liquidacion_dias` en aseguradoras y panel de **Próximas Liquidaciones (Próximo Mes)** en el dashboard con exportación a Excel. |
@@ -369,7 +370,7 @@ Además:
 
 ### 13.4 Renovaciones
 Entrada: fecha desde y fecha hasta (incluidas). Una póliza aparece si:
-- está de **ALTA** (sin fecha de baja), **o** está de **BAJA sin fecha de baja** (incluida por precaución, `falta_fecha_baja = true`);
+- está de **ALTA** (sin fecha de baja). **Una póliza de BAJA nunca renueva**, tenga o no fecha de baja (decisión del 18/10/2026);
 - y su **aniversario** `fecha_efecto + N años` (N ≥ 1) cae en el intervalo. El 29/02 renueva el 28/02 en años no bisiestos.
 - **No influye el tipo de pago**. Las de nueva producción (sin cumplir un año) no aparecen.
 - Cada resultado añade `fecha_renovacion`, `anualidad` (N) y el nombre de la aseguradora. Orden: fecha de renovación y aseguradora.
@@ -414,7 +415,7 @@ Añadir `SEMESTRAL` y `TRIMESTRAL` al catálogo y a la liquidación con la misma
 - Botón **Próximas Renovaciones** en *Gestión de Aseguradoras* (vista LIST), fuera de cualquier aseguradora → nueva vista `RENEWALS`.
 - Selector **Desde / Hasta** (por defecto hoy → hoy + 2 meses) y botón Buscar.
 - Server action `fetchRenovaciones(desde, hasta)` con §13.4 sobre todas las aseguradoras (consulta con `JOIN aseguradoras` para el nombre).
-- Tabla: Renueva, Anualidad, **Aseguradora**, Cliente, Situación, Pago, Póliza, Fecha Efecto, Producto, Prima Neta, Prima Total, % Comis., Neto Comis., Comp. Prima, Liquidación, Comp. Datos, Observaciones. Filas `falta_fecha_baja` en ámbar. Contador de pólizas.
+- Tabla: Renueva, Anualidad, **Aseguradora**, Cliente, Situación, Pago, Póliza, Fecha Efecto, Producto, Prima Neta, Prima Total, % Comis., Neto Comis., Comp. Prima, Liquidación, Comp. Datos, Observaciones. Contador de pólizas.
 - Exportación a Excel.
 
 ### EV-06 · Ocultar "Pago Asegurador"
@@ -454,7 +455,7 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 - Tarea programada **"Informe semanal de renovaciones"** (id `trig_014B6qiMLGyuHTaYNxWGtMks`), lunes 07:58 hora de Madrid, modo automático, aviso por email al terminar cada ejecución. Se gestiona desde la lista de tareas programadas de Claude.
 - **Destinatario provisional: solo juanma.criado@xeoris.com.** Tras validar, ampliar a los cuatro destinatarios editando las instrucciones de la tarea.
 - Lección aprendida: la herramienta de lectura web de Claude **no devuelve el contenido literal** (límite de cita), pero sí una **extracción estructurada** a tabla. Por eso la tarea pide la tabla y después comprueba nº de filas, nº de avisos y suma de primas contra la línea `CONTROL` antes de enviar.
-- Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ comparten nº de póliza con un registro de alta (probable anualidad anterior): completar su fecha de baja las quitará del informe.
+- Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ compartían nº de póliza con un registro de alta (anualidad anterior). Con la regla del 18/10/2026 (las de BAJA no renuevan) dejan de aparecer.
 
 **Diseño original (referencia)**
 - Tarea programada: **lunes a las 07:58 (hora de Madrid)**.
@@ -493,7 +494,7 @@ La rama incluye `scripts/test-comisiones-rules.ts` (`npx tsx scripts/test-comisi
 | R04 | ALTA, efecto 31/12/2025 | 31/12/2026, 1ª |
 | R05 | ALTA, efecto 29/02/2024 (intervalo feb–mar 2027) | 28/02/2027 |
 | R06 | ALTA, efecto 10/01/2023 (intervalo dic 2026–ene 2027) | 10/01/2027 |
-| R07 | BAJA **sin** fecha, efecto 15/11/2024 | 15/11/2026, marcada |
+| R07 | BAJA **sin** fecha (o con fecha), efecto 15/11/2024 | no aparece |
 | R08 | ALTA trimestral / semestral | aparecen igual que una anual |
 
 **Validación**: BAJA sin fecha de baja → error; ALTA con fecha de baja → se guarda sin ella; tipo de pago fuera de catálogo → error.

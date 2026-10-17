@@ -353,7 +353,7 @@ export type Renovacion<R> = R & {
 /**
  * Pólizas de ALTA cuyo aniversario de la fecha de efecto (efecto + N años, N ≥ 1)
  * cae dentro de [desde, hasta] (fechas ISO, ambas incluidas).
- * También las de BAJA sin fecha de baja, por precaución (`falta_fecha_baja = true`).
+ * Las de BAJA nunca renuevan, tengan o no fecha de baja (`falta_fecha_baja` siempre es false aquí).
  * Un 29 de febrero renueva el 28 en años no bisiestos.
  */
 export function calcularRenovaciones<R extends Record<string, any>>(
@@ -369,18 +369,18 @@ export function calcularRenovaciones<R extends Record<string, any>>(
     const resultado: Renovacion<R>[] = [];
 
     for (const reg of registros) {
+        // Solo renuevan las pólizas de ALTA. Una póliza de BAJA nunca renueva,
+        // tenga o no fecha de baja (decisión de negocio 18/10/2026).
         const situacion = normalizeCatalogValue(reg.situacion);
-        const baja = parseISODate(reg.fecha_baja);
-        const sinFechaBaja = situacion === 'BAJA' && !baja;
-        const deAlta = situacion === 'ALTA' && !baja;
-        if (!deAlta && !sinFechaBaja) continue;
+        const deAlta = situacion === 'ALTA' && !parseISODate(reg.fecha_baja);
+        if (!deAlta) continue;
         const efecto = parseISODate(reg.fecha_efecto);
         if (!efecto) continue;
 
         for (let y = Math.max(d.y, efecto.y + 1); y <= h.y; y++) {
             const fecha = toISODate({ y, m: efecto.m, d: Math.min(efecto.d, daysInMonth(y, efecto.m)) });
             if (fecha >= desde && fecha <= hasta) {
-                resultado.push({ ...reg, fecha_renovacion: fecha, anualidad: y - efecto.y, falta_fecha_baja: sinFechaBaja });
+                resultado.push({ ...reg, fecha_renovacion: fecha, anualidad: y - efecto.y, falta_fecha_baja: false });
             }
         }
     }
