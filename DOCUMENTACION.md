@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.6 · 17/10/2026**
+> **Versión 1.7 · 17/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -17,6 +17,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 | 1.2 | 17/10/2026 | Pólizas de BAJA sin fecha de baja incluidas por precaución y resaltadas; misma regla para las cuatro periodicidades. |
 | 1.3 | 17/10/2026 | EV-07 descarga de copia de datos en ZIP. Nuevos evolutivos propuestos: entorno de pruebas, planes de pago y copias de seguridad, aviso semanal de renovaciones. |
 | 1.4 | 17/10/2026 | EV-08 informe semanal de renovaciones por correo (Vercel Cron + Resend), desarrollado. |
+| 1.7 | 17/10/2026 | Revisión del commit `b52ed0e` (refinamientos del otro IDE) frente a la especificación: conforme, con observaciones menores (§16). |
 | 1.6 | 17/10/2026 | EV-01 a EV-08 implementados en la rama `feature/comisiones-evolutivos` (commit pendiente de revisión por otro IDE antes de fusionar a `main`). Se retira el parche de referencia. |
 | 1.5 | 17/10/2026 | La Parte II pasa a especificación para implementar por otro IDE; código retirado del repositorio y guardado como parche de referencia en `docs/evolutivos/`. EV-08 rediseñado: tarea programada de Claude + ruta `/api/renovaciones` (sin servidor de correo en la app). |
 
@@ -473,6 +474,16 @@ La rama incluye `scripts/test-comisiones-rules.ts` (`npx tsx scripts/test-comisi
 **Pruebas manuales en la URL de prueba**: alta y edición con desplegables; paso a BAJA con fecha; liquidación de un trimestre con una póliza mensual dada de baja a mitad; renovaciones de los próximos 2 meses; descarga del ZIP (abrir los CSV en Excel); `/api/renovaciones` sin clave → 401, con clave → listado.
 
 ## 16. Puntos a confirmar y despliegue
+
+### Revisión de código (17/10/2026)
+Revisada la rama `feature/comisiones-evolutivos` hasta el commit `b52ed0e` (refinamientos: "FALTA" en la columna Fecha Baja del Excel, año inferido de la fecha de efecto, `fecha_baja` en `init-db.ts`, `Content-Type` del ZIP y batería de pruebas ampliada).
+
+- **Resultado**: **conforme** con §13–§14. EV-01 a EV-08 presentes; compila (`tsc --noEmit`); las 28 pruebas pasan (P01–P13, R01–R08, V01–V07).
+- **Observaciones menores** (no bloquean):
+  1. `lib/db.ts → updateRegistro` reescribe `año` con el valor que ya tenía el registro, así que **no cambia aunque se cambie el año de la fecha de efecto**. Decidir si en la edición el año debe seguir a la fecha de efecto (entonces calcularlo siempre de `fecha_efecto`) o mantenerse (entonces quitar esa línea).
+  2. `lib/db.ts` usa `2025` como valor por defecto del año si faltara la fecha de efecto. Es inalcanzable (la fecha es obligatoria), pero conviene quitarlo para no esconder errores.
+  3. El nombre del ZIP de EV-07 lleva la hora en **UTC**, no en hora de España.
+  4. **Pendiente**: prueba funcional en navegador con base de datos (local o de pruebas) antes de fusionar.
 
 ### Decisiones de negocio a validar
 1. **Baja el día 1**: excluye ese mes.
