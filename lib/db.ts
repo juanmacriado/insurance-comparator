@@ -1,6 +1,21 @@
 
 import { sql } from '@vercel/postgres';
 
+// Migración ligera e idempotente: añade las columnas nuevas si aún no existen.
+// Se ejecuta una vez por instancia del servidor, antes de la primera consulta de registros.
+let schemaReady: Promise<void> | null = null;
+function ensureSchema() {
+  if (!schemaReady) {
+    schemaReady = (async () => {
+      await sql`ALTER TABLE registros_comisiones ADD COLUMN IF NOT EXISTS fecha_baja TEXT`;
+    })().catch((error) => {
+      schemaReady = null; // reintentar en la siguiente llamada
+      throw error;
+    });
+  }
+  return schemaReady;
+}
+
 async function getAseguradoras() {
   const { rows } = await sql`SELECT * FROM aseguradoras ORDER BY nombre ASC`;
   return rows;
@@ -41,16 +56,30 @@ async function getRegistros(aseguradoraId: number, año: number | null = null, t
 
   // Let's use that trick (passing null to SQL and checking IS NULL or equal).
 
+  await ensureSchema();
   const { rows } = await sql`
-    SELECT * FROM registros_comisiones 
+    SELECT * FROM registros_comisiones
     WHERE aseguradora_id = ${aseguradoraId}
     AND (${año}::int IS NULL OR año = ${año})
     AND (${tipo}::text IS NULL OR tipo_registro = ${tipo})
+    ORDER BY id
+  `;
+  return rows;
+}
+
+/** Registros de todas las aseguradoras con el nombre de la aseguradora (para listados globales). */
+async function getRegistrosConAseguradora() {
+  await ensureSchema();
+  const { rows } = await sql`
+    SELECT r.*, a.nombre AS aseguradora_nombre
+    FROM registros_comisiones r
+    JOIN aseguradoras a ON a.id = r.aseguradora_id
   `;
   return rows;
 }
 
 async function addRegistro(registro: any) {
+  await ensureSchema();
   const pNeta = Number(registro.prima_neta || 0);
   const pTotal = Number(registro.prima_total || 0);
   const pct = Number(registro.porcentaje_comision || 0);
@@ -65,14 +94,14 @@ async function addRegistro(registro: any) {
       aseguradora_id, año, tipo_registro, cliente, situacion, tipo_pago, 
       numero_poliza, fecha_efecto, pago_hiscox, producto, prima_neta, 
       prima_total, porcentaje_comision, neto_comision, comprobacion_prima,
-      importe_liquidar, comprobacion_datos
+      importe_liquidar, comprobacion_datos, fecha_baja
     ) VALUES (
-      ${registro.aseguradora_id}, ${registro.año}, ${registro.tipo_registro}, 
-      ${registro.cliente}, ${registro.situacion}, ${registro.tipo_pago}, 
-      ${registro.numero_poliza}, ${registro.fecha_efecto}, ${registro.pago_hiscox}, 
-      ${registro.producto}, ${registro.prima_neta}, ${registro.prima_total}, 
-      ${registro.porcentaje_comision}, ${registro.neto_comision}, ${compPrima}, 
-      ${registro.importe_liquidar}, ${compDatos}
+      ${registro.aseguradora_id}, ${registro.año}, ${registro.tipo_registro},
+      ${registro.cliente}, ${registro.situacion}, ${registro.tipo_pago},
+      ${registro.numero_poliza}, ${registro.fecha_efecto}, ${registro.pago_hiscox},
+      ${registro.producto}, ${registro.prima_neta}, ${registro.prima_total},
+      ${registro.porcentaje_comision}, ${registro.neto_comision}, ${compPrima},
+      ${registro.importe_liquidar}, ${compDatos}, ${registro.fecha_baja ?? null}
     )
     RETURNING id
   `;
@@ -89,8 +118,10 @@ async function updateRegistro(id: number, registro: any) {
   const compPrima = (pNeta * (pct / 100)) - neto;
   const compDatos = (pTotal - (pNeta * (pct / 100))) - impLiq;
 
+  await ensureSchema();
   await sql`
     UPDATE registros_comisiones SET
+      fecha_baja = ${registro.fecha_baja ?? null},
       cliente = ${registro.cliente},
       situacion = ${registro.situacion},
       tipo_pago = ${registro.tipo_pago},
@@ -122,6 +153,7 @@ export {
   getAseguradoras,
   addAseguradora,
   getRegistros,
+  getRegistrosConAseguradora,
   addRegistro,
   updateRegistro,
   deleteRegistro,

@@ -2,7 +2,7 @@
 import { auth } from "@/auth";
 import { createUser, deleteUser, getUsers } from "@/lib/user-actions";
 import { redirect } from "next/navigation";
-import { UserPlus, Trash2, Shield, User } from "lucide-react";
+import { UserPlus, Trash2, Shield, User, Download, Database, Mail, Eye } from "lucide-react";
 // import { UserList } from "./user-list"; // I'll inline it for simplicity or create separate client component if needed for interactivity
 
 export default async function UsersPage() {
@@ -20,6 +20,42 @@ export default async function UsersPage() {
                 <div>
                     <h1 className="text-3xl font-black text-[#16313a] uppercase tracking-tight">Gestión de Usuarios</h1>
                     <p className="text-gray-500 font-medium">Administra quién tiene acceso al sistema.</p>
+                </div>
+
+                {/* Copia de datos */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-[#16313a] flex items-center gap-2">
+                            <Database className="w-5 h-5 text-[#ffe008]" />
+                            Copia de datos
+                        </h2>
+                        <p className="text-gray-500 text-sm font-medium mt-1">
+                            Descarga un ZIP con un CSV por cada tabla de la base de datos (sin contraseñas ni tokens).
+                            Contiene datos de clientes: guárdalo en un lugar protegido.
+                        </p>
+                    </div>
+                    <a
+                        href="/admin/export"
+                        className="bg-[#16313a] text-white px-6 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap"
+                    >
+                        <Download className="w-4 h-4" /> Descargar CSV
+                    </a>
+                </div>
+
+                {/* Informe semanal de renovaciones */}
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-[#16313a] flex items-center gap-2">
+                            <Mail className="w-5 h-5 text-[#ffe008]" />
+                            Informe semanal de renovaciones
+                        </h2>
+                        <p className="text-gray-500 text-sm font-medium mt-1">
+                            Una tarea programada de Claude lo envía cada lunes desde info@xeoris.com con las pólizas que renuevan en los próximos 3 meses.
+                        </p>
+                    </div>
+                    <a href="/api/renovaciones?meses=3" target="_blank" rel="noopener" className="border border-[#16313a] text-[#16313a] px-5 py-3 rounded-xl font-black uppercase tracking-widest text-xs hover:shadow-lg transition-all flex items-center justify-center gap-2 whitespace-nowrap">
+                        <Eye className="w-4 h-4" /> Ver datos del informe
+                    </a>
                 </div>
 
                 {/* Create User Form */}

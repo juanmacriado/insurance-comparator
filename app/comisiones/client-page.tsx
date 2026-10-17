@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, CalendarClock, AlertTriangle, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
-import { fetchAseguradoras, fetchRegistros, createAseguradora, createRegistro, editRegistro, removeRegistro } from './actions';
+import { fetchAseguradoras, fetchRegistros, createAseguradora, createRegistro, editRegistro, removeRegistro, fetchLiquidacion, fetchRenovaciones } from './actions';
+import { TIPOS_PAGO, SITUACIONES, validateRegistro, addMonthsISO, todayISO, faltaFechaBaja, AVISO_FALTA_FECHA_BAJA, type AvisoLiquidacion } from '@/lib/comisiones-rules';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
-type ViewState = 'LIST' | 'DASHBOARD' | 'DETAILS';
+type ViewState = 'LIST' | 'DASHBOARD' | 'DETAILS' | 'RENEWALS';
+
+const currentMonthISO = () => todayISO().slice(0, 7);
 
 export default function ComisionesClientPage() {
     const [view, setView] = useState<ViewState>('LIST');
@@ -24,9 +27,17 @@ export default function ComisionesClientPage() {
     const [editingData, setEditingData] = useState<any>(null);
     const [isAddingNew, setIsAddingNew] = useState(false);
     const [showSettlementModal, setShowSettlementModal] = useState(false);
-    const [settlementRange, setSettlementRange] = useState({ start: '', end: '' });
+    // Liquidación por meses naturales ('YYYY-MM')
+    const [settlementRange, setSettlementRange] = useState({ start: currentMonthISO(), end: currentMonthISO() });
     const [settlementResults, setSettlementResults] = useState<any[]>([]);
+    const [settlementWarnings, setSettlementWarnings] = useState<AvisoLiquidacion[]>([]);
+    const [settlementError, setSettlementError] = useState<string | null>(null);
     const [isSettlementView, setIsSettlementView] = useState(false);
+    const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    // Próximas renovaciones (todas las aseguradoras)
+    const [renewalRange, setRenewalRange] = useState(() => ({ start: todayISO(), end: addMonthsISO(todayISO(), 2) }));
+    const [renewals, setRenewals] = useState<any[]>([]);
+    const [renewalError, setRenewalError] = useState<string | null>(null);
 
     useEffect(() => {
         loadAseguradoras();
@@ -60,7 +71,6 @@ export default function ComisionesClientPage() {
         tipo_pago: '',
         numero_poliza: '',
         fecha_efecto: '',
-        pago_hiscox: '',
         producto: ''
     });
 
@@ -77,7 +87,6 @@ export default function ComisionesClientPage() {
             matches('tipo_pago', filters.tipo_pago) &&
             matches('numero_poliza', filters.numero_poliza) &&
             matches('fecha_efecto', filters.fecha_efecto) &&
-            matches('pago_hiscox', filters.pago_hiscox) &&
             matches('producto', filters.producto)
         );
     });
@@ -98,14 +107,22 @@ export default function ComisionesClientPage() {
             tipo_pago: '',
             numero_poliza: '',
             fecha_efecto: '',
-            pago_hiscox: '',
             producto: ''
         });
     }
 
+    /** Valida en cliente (misma regla que el servidor). Devuelve true si es válido. */
+    function checkForm(data: any) {
+        const { errors } = validateRegistro(data || {});
+        setFormErrors(errors);
+        return Object.keys(errors).length === 0;
+    }
+
     async function handleSaveRow(id: number) {
-        if (!editingData) return;
-        await editRegistro(id, editingData);
+        if (!editingData || !checkForm(editingData)) return;
+        const result = await editRegistro(id, editingData);
+        if (!result.ok) { setFormErrors(result.errors); return; }
+        setFormErrors({});
         setExpandedRow(null);
         setEditingData(null);
         handleSelectCategory(selectedCategory); // Refresh
@@ -118,13 +135,16 @@ export default function ComisionesClientPage() {
     }
 
     async function handleAddNew() {
-        if (!editingData) return;
-        await createRegistro({
+        if (!editingData || !checkForm(editingData)) return;
+        const result = await createRegistro({
             ...editingData,
             aseguradora_id: selectedAseguradora.id,
-            año: selectedYear,
+            // El año del registro es el de su fecha de efecto
+            año: Number(String(editingData.fecha_efecto).slice(0, 4)) || selectedYear,
             tipo_registro: selectedCategory
         });
+        if (!result.ok) { setFormErrors(result.errors); return; }
+        setFormErrors({});
         setIsAddingNew(false);
         setEditingData(null);
         handleSelectCategory(selectedCategory); // Refresh
@@ -132,78 +152,81 @@ export default function ComisionesClientPage() {
 
     async function handleGenerateSettlement() {
         if (!settlementRange.start || !settlementRange.end) return;
+        if (settlementRange.start > settlementRange.end) {
+            setSettlementError('El mes de inicio no puede ser posterior al mes de fin.');
+            return;
+        }
 
+        setSettlementError(null);
         setLoading(true);
-        // We need ALL records for this insurer to apply the logic
-        const allData = await fetchRegistros(selectedAseguradora.id, null, null); // Modify action if needed or fetch per category
-
-        const start = new Date(settlementRange.start);
-        const end = new Date(settlementRange.end);
-
-        const results: any[] = [];
-
-        allData.forEach((reg: any) => {
-            if (reg.situacion?.toUpperCase() !== 'ALTA') return;
-
-            const effectDate = new Date(reg.fecha_efecto);
-
-            if (reg.tipo_pago?.toUpperCase() === 'ANUAL') {
-                // Annual logic: month/day in range
-                if (isDayMonthInRange(effectDate, start, end)) {
-                    results.push({ ...reg, settlementLabel: 'ANUAL' });
-                }
-            } else if (reg.tipo_pago?.toUpperCase() === 'MENSUAL') {
-                // Monthly logic: expansion
-                const monthsInSettlement = getMonthsInRange(effectDate, start, end);
-                monthsInSettlement.forEach(mLabel => {
-                    results.push({ ...reg, settlementLabel: mLabel });
-                });
-            }
-        });
-
-        setSettlementResults(results);
-        setIsSettlementView(true);
-        setShowSettlementModal(false);
-        setLoading(false);
-    }
-
-    function isDayMonthInRange(date: Date, start: Date, end: Date) {
-        const m = date.getMonth();
-        const d = date.getDate();
-
-        // Simplified check: convert to a comparable number (MMDD)
-        const currentMMDD = (m + 1) * 100 + d;
-        const startMMDD = (start.getMonth() + 1) * 100 + start.getDate();
-        const endMMDD = (end.getMonth() + 1) * 100 + end.getDate();
-
-        if (startMMDD <= endMMDD) {
-            return currentMMDD >= startMMDD && currentMMDD <= endMMDD;
-        } else {
-            // Range crosses year boundary
-            return currentMMDD >= startMMDD || currentMMDD <= endMMDD;
+        try {
+            // Cálculo en servidor (lib/comisiones-rules.ts → calcularLiquidacion)
+            const { lineas, avisos } = await fetchLiquidacion(selectedAseguradora.id, settlementRange.start, settlementRange.end);
+            setSettlementResults(lineas);
+            setSettlementWarnings(avisos);
+            setIsSettlementView(true);
+            setShowSettlementModal(false);
+        } catch (error) {
+            setSettlementError(error instanceof Error ? error.message : 'Error al generar la liquidación.');
+        } finally {
+            setLoading(false);
         }
-    }
-
-    function getMonthsInRange(effectDate: Date, start: Date, end: Date) {
-        const months = [];
-        let curr = new Date(start.getFullYear(), start.getMonth(), 1);
-        const finale = new Date(end.getFullYear(), end.getMonth(), 1);
-
-        while (curr <= finale) {
-            // Check if effectDate is before or in this month
-            if (effectDate <= new Date(curr.getFullYear(), curr.getMonth(), 31)) {
-                const monthLabels = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                months.push(`${monthLabels[curr.getMonth()]} ${curr.getFullYear()}`);
-            }
-            curr.setMonth(curr.getMonth() + 1);
-        }
-        return months;
     }
 
     function handleExportSettlement() {
         const table = document.getElementById('settlement-table');
         const wb = XLSX.utils.table_to_book(table);
-        XLSX.writeFile(wb, `Liquidacion_${settlementRange.start}_${settlementRange.end}.xlsx`);
+        XLSX.writeFile(wb, `Liquidacion_${selectedAseguradora?.nombre ?? ''}_${settlementRange.start}_${settlementRange.end}.xlsx`);
+    }
+
+    async function handleSearchRenewals() {
+        if (!renewalRange.start || !renewalRange.end) return;
+        if (renewalRange.start > renewalRange.end) {
+            setRenewalError('La fecha inicial no puede ser posterior a la final.');
+            return;
+        }
+        setRenewalError(null);
+        setLoading(true);
+        try {
+            setRenewals(await fetchRenovaciones(renewalRange.start, renewalRange.end));
+        } catch (error) {
+            setRenewalError(error instanceof Error ? error.message : 'Error al buscar renovaciones.');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function handleOpenRenewals() {
+        setSelectedAseguradora(null);
+        setIsSettlementView(false);
+        setView('RENEWALS');
+        handleSearchRenewals();
+    }
+
+    function handleExportRenewals() {
+        const data = renewals.map(reg => ({
+            'Fecha Renovación': formatDate(reg.fecha_renovacion),
+            'Anualidad': reg.anualidad,
+            'Aseguradora': reg.aseguradora_nombre,
+            'Cliente': reg.cliente,
+            'Situación': reg.situacion,
+            'Tipo de Pago': reg.tipo_pago,
+            'Nº Póliza': reg.numero_poliza,
+            'Fecha Efecto': formatDate(reg.fecha_efecto),
+            'Producto': reg.producto,
+            'Prima Neta': reg.prima_neta,
+            'Prima Total': reg.prima_total,
+            '% Comisión': reg.porcentaje_comision,
+            'Neto Comisión': reg.neto_comision,
+            'Comp. Prima': reg.comprobacion_prima,
+            'Importe a Liquidar': reg.importe_liquidar,
+            'Comp. Datos': reg.comprobacion_datos,
+            'Observaciones': reg.falta_fecha_baja ? AVISO_FALTA_FECHA_BAJA : ''
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Renovaciones');
+        XLSX.writeFile(wb, `Renovaciones_${renewalRange.start}_${renewalRange.end}.xlsx`);
     }
 
     const categories = [
@@ -219,7 +242,7 @@ export default function ComisionesClientPage() {
             'Tipo de Pago': reg.tipo_pago,
             'Nº Póliza': reg.numero_poliza,
             'Fecha Efecto': formatDate(reg.fecha_efecto),
-            'Pago Asegurador': reg.pago_hiscox,
+            'Fecha Baja': formatDate(reg.fecha_baja),
             'Producto': reg.producto,
             'Prima Neta': reg.prima_neta,
             'Prima Total': reg.prima_total,
@@ -254,6 +277,8 @@ export default function ComisionesClientPage() {
                                     else setView('LIST');
                                     setExpandedRow(null);
                                     setIsAddingNew(false);
+                                    setIsSettlementView(false);
+                                    setFormErrors({});
                                 }}
                                 className="hover:bg-slate-100 dark:hover:bg-slate-800 p-2 rounded-full transition-colors"
                             >
@@ -275,6 +300,11 @@ export default function ComisionesClientPage() {
                                 {selectedAseguradora && (
                                     <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
                                         {selectedAseguradora.nombre} {view === 'DETAILS' ? `> ${selectedCategory}` : '> Panel'}
+                                    </div>
+                                )}
+                                {view === 'RENEWALS' && (
+                                    <div className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5">
+                                        Todas las aseguradoras {'>'} Próximas renovaciones
                                     </div>
                                 )}
                             </div>
@@ -303,7 +333,7 @@ export default function ComisionesClientPage() {
                         <div className="flex justify-between items-start mb-10">
                             <div>
                                 <h2 className="text-3xl font-display font-bold uppercase tracking-tight leading-none text-secondary">Periodo de Liquidación</h2>
-                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] mt-3">Define el intervalo de fechas</p>
+                                <p className="text-[11px] font-bold text-slate-300 uppercase tracking-[0.2em] mt-3">Meses naturales, ambos incluidos</p>
                             </div>
                             <button
                                 onClick={() => setShowSettlementModal(false)}
@@ -315,23 +345,30 @@ export default function ComisionesClientPage() {
 
                         <div className="space-y-8 mb-10">
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha de Inicio</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Mes de Inicio</label>
                                 <input
-                                    type="date"
+                                    type="month"
                                     value={settlementRange.start}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, start: e.target.value })}
                                     className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
                             <div className="flex flex-col gap-3">
-                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Fecha Finalización</label>
+                                <label className="text-[11px] font-bold uppercase tracking-widest text-secondary ml-1">Mes de Fin</label>
                                 <input
-                                    type="date"
+                                    type="month"
                                     value={settlementRange.end}
                                     onChange={(e) => setSettlementRange({ ...settlementRange, end: e.target.value })}
                                     className="bg-white/5 border border-white/10 rounded-xl px-6 py-4 font-bold text-lg text-white focus:outline-none focus:border-secondary focus:bg-white/10 transition-all w-full [color-scheme:dark]"
                                 />
                             </div>
+                            <p className="text-[11px] text-slate-300 leading-relaxed">
+                                Incluye cada póliza en los meses del periodo en que le toca cobro (según su tipo de pago)
+                                y estuvo de alta al menos parte del mes, aunque hoy esté de baja.
+                            </p>
+                            {settlementError && (
+                                <p className="text-sm font-bold text-red-300">{settlementError}</p>
+                            )}
                         </div>
 
                         <button
@@ -350,12 +387,20 @@ export default function ComisionesClientPage() {
                     <div className="animate-in fade-in duration-500">
                         <div className="flex justify-between items-center mb-10">
                             <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight">Gestión de Aseguradoras</h2>
-                            <button
-                                onClick={() => setShowNewAseguradora(!showNewAseguradora)}
-                                className="bg-primary hover:bg-indigo-900 text-white px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all"
-                            >
-                                <Plus className="w-4 h-4" /> Nueva Aseguradora
-                            </button>
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={handleOpenRenewals}
+                                    className="bg-secondary text-primary px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                                >
+                                    <CalendarClock className="w-4 h-4" /> Próximas Renovaciones
+                                </button>
+                                <button
+                                    onClick={() => setShowNewAseguradora(!showNewAseguradora)}
+                                    className="bg-primary hover:bg-indigo-900 text-white px-6 py-3 rounded-full font-bold text-sm uppercase tracking-widest flex items-center gap-2 shadow-lg transition-all"
+                                >
+                                    <Plus className="w-4 h-4" /> Nueva Aseguradora
+                                </button>
+                            </div>
                         </div>
 
                         {showNewAseguradora && (
@@ -406,6 +451,89 @@ export default function ComisionesClientPage() {
                     </div>
                 )}
 
+                {/* VIEW 5: PRÓXIMAS RENOVACIONES (todas las aseguradoras) */}
+                {view === 'RENEWALS' && (
+                    <div className="pb-20 animate-in fade-in slide-in-from-bottom-5 duration-500">
+                        <div className="flex flex-col md:flex-row md:justify-between md:items-end gap-6 mb-8">
+                            <div>
+                                <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight uppercase">Próximas Renovaciones</h2>
+                                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+                                    Pólizas de alta cuyo aniversario de efecto cae en el intervalo
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap items-end gap-3">
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Desde</label>
+                                    <input type="date" value={renewalRange.start} onChange={e => setRenewalRange({ ...renewalRange, start: e.target.value })} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary dark:text-white" />
+                                </div>
+                                <div className="flex flex-col gap-1.5">
+                                    <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Hasta</label>
+                                    <input type="date" value={renewalRange.end} onChange={e => setRenewalRange({ ...renewalRange, end: e.target.value })} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold outline-none focus:ring-2 focus:ring-primary dark:text-white" />
+                                </div>
+                                <button onClick={handleSearchRenewals} className="bg-primary text-secondary px-6 py-2.5 rounded-xl font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all">
+                                    <Search className="w-4 h-4" /> Buscar
+                                </button>
+                                <button onClick={handleExportRenewals} disabled={renewals.length === 0} className="p-2.5 glass-card rounded-xl shadow-sm hover:bg-white/50 dark:hover:bg-slate-800/50 transition-all text-primary dark:text-white disabled:opacity-40" title="Descargar Excel">
+                                    <Download className="w-5 h-5" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {renewalError && <p className="mb-6 text-sm font-bold text-red-500">{renewalError}</p>}
+
+                        <div className="glass-card rounded-[32px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 overflow-hidden mb-20">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse">
+                                    <thead>
+                                        <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                                            {[
+                                                'Renueva', 'Anualidad', 'Aseguradora', 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
+                                                'Producto', 'Prima Neta', 'Prima Total',
+                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos', 'Observaciones'
+                                            ].map(h => (
+                                                <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                        {loading ? (
+                                            <tr><td colSpan={17} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">Buscando...</td></tr>
+                                        ) : renewals.length === 0 ? (
+                                            <tr><td colSpan={17} className="px-4 py-16 text-center text-slate-400 font-bold text-[10px] uppercase tracking-wider">No hay pólizas que renueven en este intervalo.</td></tr>
+                                        ) : renewals.map((reg, idx) => (
+                                            <tr key={`${reg.id}-${reg.fecha_renovacion}-${idx}`} className={cn("transition-colors text-slate-800 dark:text-slate-200", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
+                                                <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-primary dark:text-secondary">{formatDate(reg.fecha_renovacion)}</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] text-slate-500">{reg.anualidad}ª</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap uppercase">{reg.aseguradora_nombre}</td>
+                                                <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap">{reg.cliente}</td>
+                                                <td className="px-4 py-3"><SituacionBadge situacion={reg.situacion} /></td>
+                                                <td className="px-4 py-3"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500">{reg.tipo_pago}</span></td>
+                                                <td className="px-4 py-3 font-mono text-[9px] text-slate-600 dark:text-slate-400 whitespace-nowrap">{reg.numero_poliza}</td>
+                                                <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">{formatDate(reg.fecha_efecto)}</td>
+                                                <td className="px-4 py-3 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
+                                                <td className="px-4 py-3 font-bold text-[10px]">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-[10px]">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-primary dark:text-secondary text-[10px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
+                                                <td className="px-4 py-3 font-bold text-[10px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-slate-400 text-[10px]">{Number(reg.comprobacion_prima ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-[10px]">{Number(reg.importe_liquidar ?? 0).toFixed(2)}€</td>
+                                                <td className="px-4 py-3 font-bold text-slate-400 text-[10px]">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
+                                                <td className="px-4 py-3"><Observacion falta={reg.falta_fecha_baja} /></td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        {!loading && renewals.length > 0 && (
+                            <p className="-mt-16 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+                                {renewals.length} pólizas
+                                {renewals.some(r => r.falta_fecha_baja) && <> · <FaltaBajaLeyenda n={renewals.filter(r => r.falta_fecha_baja).length} /></>}
+                            </p>
+                        )}
+                    </div>
+                )}
+
                 {/* VIEW 2: INSURER DASHBOARD */}
                 {view === 'DASHBOARD' && (
                     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -446,7 +574,7 @@ export default function ComisionesClientPage() {
                                 <div>
                                     <h2 className="text-3xl font-display font-bold text-primary dark:text-white tracking-tight uppercase">Liquidación de Comisiones</h2>
                                     <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
-                                        Periodo: {formatDate(settlementRange.start)} - {formatDate(settlementRange.end)}
+                                        Periodo: {formatMonth(settlementRange.start)} - {formatMonth(settlementRange.end)} · {settlementResults.length} líneas
                                     </div>
                                 </div>
                             </div>
@@ -458,15 +586,35 @@ export default function ComisionesClientPage() {
                             </button>
                         </div>
 
+                        {settlementResults.some(r => r.falta_fecha_baja) && (
+                            <div className="mb-6 p-5 rounded-[24px] border-l-4 border-amber-400 bg-amber-100/70 dark:bg-amber-900/30 text-amber-900 dark:text-amber-100 text-[11px] font-medium">
+                                <span className="font-bold uppercase tracking-widest"><FaltaBajaLeyenda n={new Set(settlementResults.filter(r => r.falta_fecha_baja).map(r => r.id)).size} /></span>
+                                <span className="block mt-1">Pólizas de BAJA sin fecha de baja: se incluyen por precaución en sus meses de cobro. Completa la fecha de baja para liquidarlas correctamente.</span>
+                            </div>
+                        )}
+
+                        {settlementWarnings.length > 0 && (
+                            <div className="mb-8 p-6 rounded-[24px] border border-amber-300/60 bg-amber-50 dark:bg-amber-900/20 text-amber-900 dark:text-amber-100">
+                                <div className="flex items-center gap-2 font-bold uppercase tracking-widest text-[11px] mb-3">
+                                    <AlertTriangle className="w-4 h-4" /> {settlementWarnings.length} registros no incluidos: revísalos
+                                </div>
+                                <ul className="text-[11px] font-medium space-y-1 max-h-40 overflow-y-auto">
+                                    {settlementWarnings.map(w => (
+                                        <li key={String(w.id)}><span className="font-bold">{w.cliente || 'Sin cliente'}</span> · {w.numero_poliza || 'sin póliza'} — {w.motivo}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
                         <div className="glass-card rounded-[32px] shadow-sm border border-slate-200/50 dark:border-slate-700/50 overflow-hidden mb-20">
                             <div className="overflow-x-auto">
                                 <table className="w-full text-left border-collapse" id="settlement-table">
                                     <thead>
                                         <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                                             {[
-                                                'Mes Liq.', 'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
-                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
+                                                'Mes Liq.', 'Cliente', 'Situación', 'Fecha Baja', 'Pago', 'Póliza', 'Fecha Efecto',
+                                                'Producto', 'Prima Neta', 'Prima Total',
+                                                '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos', 'Observaciones'
                                             ].map(h => (
                                                 <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
                                             ))}
@@ -474,27 +622,14 @@ export default function ComisionesClientPage() {
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                                         {settlementResults.map((reg, idx) => (
-                                            <tr key={idx} className="hover:bg-white/50 dark:hover:bg-slate-800/50 transition-colors">
+                                            <tr key={idx} className={cn("transition-colors", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
                                                 <td className="px-4 py-3 font-bold text-slate-500 dark:text-slate-400 text-[9px] uppercase">{reg.settlementLabel}</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-slate-800 dark:text-slate-200">{reg.cliente}</td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className={cn("w-1.5 h-1.5 rounded-full ring-1 ring-white/20 shadow-sm",
-                                                            reg.situacion?.trim().toUpperCase() === 'ALTA' ? 'bg-green-500' : 'bg-red-500'
-                                                        )}></span>
-                                                        <span className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md",
-                                                            reg.situacion?.trim().toUpperCase() === 'ALTA'
-                                                                ? 'bg-green-500/10 text-green-600 dark:text-green-400'
-                                                                : 'bg-red-500/10 text-red-600 dark:text-red-400'
-                                                        )}>
-                                                            {reg.situacion}
-                                                        </span>
-                                                    </div>
-                                                </td>
+                                                <td className="px-4 py-3"><SituacionBadge situacion={reg.situacion} /></td>
+                                                <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap"><FechaBajaCell reg={reg} /></td>
                                                 <td className="px-4 py-3"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500">{reg.tipo_pago}</span></td>
                                                 <td className="px-4 py-3 font-mono text-[9px] text-slate-600 dark:text-slate-400 whitespace-nowrap">{reg.numero_poliza}</td>
                                                 <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold">{formatDate(reg.fecha_efecto)}</td>
-                                                <td className="px-4 py-3 font-bold text-primary dark:text-slate-200 text-[10px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
                                                 <td className="px-4 py-3 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
                                                 <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
@@ -507,6 +642,7 @@ export default function ComisionesClientPage() {
                                                     </div>
                                                 </td>
                                                 <td className="px-4 py-3 font-bold text-slate-400 text-[10px]">{Number(reg.comprobacion_datos ?? 0).toFixed(2)}</td>
+                                                <td className="px-4 py-3"><Observacion falta={reg.falta_fecha_baja} /></td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -524,7 +660,15 @@ export default function ComisionesClientPage() {
                                                 </div>
                                             </td>
                                             <td></td>
+                                            <td></td>
                                         </tr>
+                                        {settlementResults.some(r => r.falta_fecha_baja) && (
+                                            <tr className="font-bold text-amber-800 dark:text-amber-200 uppercase tracking-widest text-[9px] bg-amber-100/70 dark:bg-amber-900/30">
+                                                <td colSpan={13} className="px-4 py-4 text-right">De ellas, sin fecha de baja (por precaución)</td>
+                                                <td className="px-4 py-4 text-[11px]">{settlementResults.filter(r => r.falta_fecha_baja).reduce((acc, curr) => acc + Number(curr.importe_liquidar || 0), 0).toFixed(2)}€</td>
+                                                <td colSpan={2}></td>
+                                            </tr>
+                                        )}
                                     </tfoot>
                                 </table>
                             </div>
@@ -545,6 +689,7 @@ export default function ComisionesClientPage() {
                                     onClick={() => {
                                         setIsAddingNew(true);
                                         setEditingData({});
+                                        setFormErrors({});
                                     }}
                                     className="bg-primary text-secondary px-6 py-3 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 hover:shadow-lg transition-all"
                                 >
@@ -579,7 +724,7 @@ export default function ComisionesClientPage() {
                                         <X className="w-6 h-6" />
                                     </button>
                                 </div>
-                                <FormFields data={editingData || {}} onChange={setEditingData} />
+                                <FormFields data={editingData || {}} onChange={setEditingData} errors={formErrors} />
                                 <div className="mt-8 flex justify-end">
                                     <button
                                         onClick={handleAddNew}
@@ -598,8 +743,8 @@ export default function ComisionesClientPage() {
                                         <tr className="bg-slate-50/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
                                             <th className="w-8"></th>
                                             {[
-                                                'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto',
-                                                'Pago Asegurador', 'Producto', 'Prima Neta', 'Prima Total',
+                                                'Cliente', 'Situación', 'Pago', 'Póliza', 'Fecha Efecto', 'Fecha Baja',
+                                                'Producto', 'Prima Neta', 'Prima Total',
                                                 '% Comis.', 'Neto Comis.', 'Comp. Prima', 'Liquidación', 'Comp. Datos'
                                             ].map(h => (
                                                 <th key={h} className="px-4 py-4 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
@@ -610,13 +755,23 @@ export default function ComisionesClientPage() {
                                             <tr className="bg-white/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-700">
                                                 <th className="w-8"></th>
                                                 <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.cliente || ''} onChange={e => setFilters({ ...filters, cliente: e.target.value })} /></th>
-                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.situacion || ''} onChange={e => setFilters({ ...filters, situacion: e.target.value })} /></th>
-                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.tipo_pago || ''} onChange={e => setFilters({ ...filters, tipo_pago: e.target.value })} /></th>
+                                                <th className="p-2">
+                                                    <select className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.situacion || ''} onChange={e => setFilters({ ...filters, situacion: e.target.value })}>
+                                                        <option value="">Todas</option>
+                                                        {SITUACIONES.map(s => <option key={s} value={s}>{s}</option>)}
+                                                    </select>
+                                                </th>
+                                                <th className="p-2">
+                                                    <select className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.tipo_pago || ''} onChange={e => setFilters({ ...filters, tipo_pago: e.target.value })}>
+                                                        <option value="">Todos</option>
+                                                        {TIPOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
+                                                    </select>
+                                                </th>
                                                 <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.numero_poliza || ''} onChange={e => setFilters({ ...filters, numero_poliza: e.target.value })} /></th>
                                                 <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.fecha_efecto || ''} onChange={e => setFilters({ ...filters, fecha_efecto: e.target.value })} /></th>
-                                                <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.pago_hiscox || ''} onChange={e => setFilters({ ...filters, pago_hiscox: e.target.value })} /></th>
+                                                <th></th>
                                                 <th className="p-2"><input placeholder="Filtrar..." className="w-full text-[9px] p-2 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-900 dark:text-white focus:outline-none focus:border-secondary" value={filters.producto || ''} onChange={e => setFilters({ ...filters, producto: e.target.value })} /></th>
-                                                <th colSpan={7}></th>
+                                                <th colSpan={8}></th>
                                             </tr>
                                         )}
                                     </thead>
@@ -630,6 +785,7 @@ export default function ComisionesClientPage() {
                                                 <React.Fragment key={reg.id}>
                                                     <tr
                                                         onClick={() => {
+                                                            setFormErrors({});
                                                             if (expandedRow === reg.id) {
                                                                 setExpandedRow(null);
                                                                 setEditingData(null);
@@ -644,24 +800,11 @@ export default function ComisionesClientPage() {
                                                             {expandedRow === reg.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
                                                         </td>
                                                         <td className="px-4 py-4 font-bold text-[10px] whitespace-nowrap">{reg.cliente}</td>
-                                                        <td className="px-4 py-4">
-                                                            <div className="flex items-center gap-1.5">
-                                                                <span className={cn("w-1.5 h-1.5 rounded-full ring-1 ring-white/20 shadow-sm",
-                                                                    reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-green-500' :
-                                                                        reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-red-500' : 'bg-slate-300'
-                                                                )}></span>
-                                                                <span className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md",
-                                                                    reg.situacion?.toUpperCase().trim() === 'ALTA' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
-                                                                        reg.situacion?.toUpperCase().trim() === 'BAJA' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-slate-200 text-slate-500'
-                                                                )}>
-                                                                    {reg.situacion}
-                                                                </span>
-                                                            </div>
-                                                        </td>
+                                                        <td className="px-4 py-4"><SituacionBadge situacion={reg.situacion} /></td>
                                                         <td className="px-4 py-4"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500 dark:text-slate-400">{reg.tipo_pago}</span></td>
                                                         <td className="px-4 py-4 font-mono text-[9px] whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.numero_poliza}</td>
                                                         <td className="px-4 py-4 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">{formatDate(reg.fecha_efecto)}</td>
-                                                        <td className="px-4 py-4 font-bold text-slate-900 dark:text-slate-100 text-[10px]">{Number(reg.pago_hiscox ?? 0).toFixed(2)}€</td>
+                                                        <td className="px-4 py-4 text-[9px] text-red-500/80 font-bold whitespace-nowrap"><FechaBajaCell reg={reg} /></td>
                                                         <td className="px-4 py-4 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
                                                         <td className="px-4 py-4 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
                                                         <td className="px-4 py-4 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
@@ -690,7 +833,7 @@ export default function ComisionesClientPage() {
                                                         <tr>
                                                             <td colSpan={16} className="px-4 py-2 bg-primary/5 dark:bg-slate-800/50">
                                                                 <div className="mb-4 p-2">
-                                                                    <FormFields data={editingData} onChange={setEditingData} />
+                                                                    <FormFields data={editingData} onChange={setEditingData} errors={formErrors} />
                                                                     <div className="flex justify-end gap-2 mt-4">
                                                                         <button
                                                                             onClick={() => setExpandedRow(null)}
@@ -731,36 +874,117 @@ function formatDate(dateStr: string) {
     return `${day}/${month}/${year}`;
 }
 
-const FormFields = ({ data, onChange }: { data: any, onChange: (newData: any) => void }) => {
+function formatMonth(monthStr: string) {
+    if (!monthStr || !monthStr.includes('-')) return monthStr || '-';
+    const [year, month] = monthStr.split('-');
+    return `${month}/${year}`;
+}
+
+const ROW_FALTA_BAJA = "bg-amber-100/70 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/40 shadow-[inset_4px_0_0_0_#f59e0b]";
+
+/** Fecha de baja, o aviso destacado si la póliza está de BAJA sin fecha. */
+function FechaBajaCell({ reg }: { reg: any }) {
+    if (faltaFechaBaja(reg)) {
+        return <span className="text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950">Falta</span>;
+    }
+    return <>{formatDate(reg.fecha_baja)}</>;
+}
+
+function Observacion({ falta }: { falta?: boolean }) {
+    if (!falta) return null;
+    return (
+        <span className="inline-flex items-center gap-1 text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md bg-amber-400 text-amber-950 whitespace-nowrap">
+            <AlertTriangle className="w-3 h-3" /> {AVISO_FALTA_FECHA_BAJA}
+        </span>
+    );
+}
+
+function FaltaBajaLeyenda({ n }: { n: number }) {
+    return (
+        <span className="inline-flex items-center gap-1.5 text-amber-700 dark:text-amber-300">
+            <span className="w-2.5 h-2.5 rounded-sm bg-amber-400 inline-block"></span>
+            {n} {n === 1 ? 'póliza' : 'pólizas'} sin fecha de baja
+        </span>
+    );
+}
+
+function SituacionBadge({ situacion }: { situacion?: string }) {
+    const s = situacion?.toUpperCase().trim();
+    return (
+        <div className="flex items-center gap-1.5">
+            <span className={cn("w-1.5 h-1.5 rounded-full ring-1 ring-white/20 shadow-sm",
+                s === 'ALTA' ? 'bg-green-500' : s === 'BAJA' ? 'bg-red-500' : 'bg-slate-300'
+            )}></span>
+            <span className={cn("text-[8px] font-bold uppercase tracking-widest px-1.5 py-0.5 rounded-md",
+                s === 'ALTA' ? 'bg-green-500/10 text-green-600 dark:text-green-400' :
+                    s === 'BAJA' ? 'bg-red-500/10 text-red-600 dark:text-red-400' : 'bg-slate-200 text-slate-500'
+            )}>
+                {situacion || '-'}
+            </span>
+        </div>
+    );
+}
+
+const fieldClass = "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all";
+
+const FieldError = ({ msg }: { msg?: string }) =>
+    msg ? <span className="text-[10px] font-bold text-red-500 ml-1">{msg}</span> : null;
+
+const FormFields = ({ data, onChange, errors = {} }: { data: any, onChange: (newData: any) => void, errors?: Record<string, string> }) => {
     const handleChange = (field: string, value: any) => {
         onChange({ ...data, [field]: value });
     };
+    const situacion = String(data.situacion || '').toUpperCase().trim();
+    const tipoPago = String(data.tipo_pago || '').toUpperCase().trim();
+    // Valores antiguos escritos a mano que no están en el catálogo: se muestran para que el usuario los corrija
+    const tipoPagoLegacy = tipoPago && !(TIPOS_PAGO as readonly string[]).includes(tipoPago) ? data.tipo_pago : null;
+    const situacionLegacy = situacion && !(SITUACIONES as readonly string[]).includes(situacion) ? data.situacion : null;
 
     return (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-6 bg-white/50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-slate-700 mt-2 animate-in fade-in slide-in-from-top-1 duration-300">
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Cliente</label>
-                <input type="text" value={data.cliente || ''} onChange={(e) => handleChange('cliente', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
+                <input type="text" value={data.cliente || ''} onChange={(e) => handleChange('cliente', e.target.value)} className={fieldClass} />
+                <FieldError msg={errors.cliente} />
             </div>
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Situación</label>
-                <input type="text" value={data.situacion || ''} onChange={(e) => handleChange('situacion', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" placeholder="ALTA / BAJA" />
+                <select
+                    value={situacionLegacy ? situacionLegacy : situacion}
+                    onChange={(e) => onChange({ ...data, situacion: e.target.value, ...(e.target.value === 'ALTA' ? { fecha_baja: null } : {}) })}
+                    className={fieldClass}
+                >
+                    <option value="">Selecciona...</option>
+                    {situacionLegacy && <option value={situacionLegacy} disabled>{situacionLegacy} (no válido)</option>}
+                    {SITUACIONES.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+                <FieldError msg={errors.situacion} />
             </div>
+            {situacion === 'BAJA' && (
+                <div className="flex flex-col gap-1.5">
+                    <label className="text-[9px] font-bold uppercase tracking-widest text-red-400 ml-1">Fecha de Baja</label>
+                    <input type="date" value={data.fecha_baja || ''} min={data.fecha_efecto || undefined} onChange={(e) => handleChange('fecha_baja', e.target.value)} className={cn(fieldClass, 'border-red-300 dark:border-red-800')} />
+                    <FieldError msg={errors.fecha_baja} />
+                </div>
+            )}
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Tipo de Pago</label>
-                <input type="text" value={data.tipo_pago || ''} onChange={(e) => handleChange('tipo_pago', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
+                <select value={tipoPagoLegacy ? tipoPagoLegacy : tipoPago} onChange={(e) => handleChange('tipo_pago', e.target.value)} className={fieldClass}>
+                    <option value="">Selecciona...</option>
+                    {tipoPagoLegacy && <option value={tipoPagoLegacy} disabled>{tipoPagoLegacy} (no válido)</option>}
+                    {TIPOS_PAGO.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+                <FieldError msg={errors.tipo_pago} />
             </div>
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nº Póliza</label>
-                <input type="text" value={data.numero_poliza || ''} onChange={(e) => handleChange('numero_poliza', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
+                <input type="text" value={data.numero_poliza || ''} onChange={(e) => handleChange('numero_poliza', e.target.value)} className={fieldClass} />
+                <FieldError msg={errors.numero_poliza} />
             </div>
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Fecha Efecto</label>
-                <input type="date" value={data.fecha_efecto || ''} onChange={(e) => handleChange('fecha_efecto', e.target.value)} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
-            </div>
-            <div className="flex flex-col gap-1.5">
-                <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Pago Asegurador</label>
-                <input type="number" step="0.01" value={data.pago_hiscox || 0} onChange={(e) => handleChange('pago_hiscox', parseFloat(e.target.value))} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-sm font-bold focus:ring-2 focus:ring-primary focus:border-transparent outline-none dark:text-white transition-all" />
+                <input type="date" value={data.fecha_efecto || ''} onChange={(e) => handleChange('fecha_efecto', e.target.value)} className={fieldClass} />
+                <FieldError msg={errors.fecha_efecto} />
             </div>
             <div className="flex flex-col gap-1.5">
                 <label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Producto</label>
