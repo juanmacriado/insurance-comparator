@@ -84,6 +84,29 @@ export function addMonthsISO(iso: string, months: number): string {
     return toISODate({ y, m, d: Math.min(date.d, daysInMonth(y, m)) });
 }
 
+/** Suma días a una fecha ISO ('YYYY-MM-DD'). Soporta números negativos. */
+export function addDaysISO(iso: string, days: number): string {
+    const date = parseISODate(iso);
+    if (!date) return iso;
+    const utc = new Date(Date.UTC(date.y, date.m - 1, date.d));
+    utc.setUTCDate(utc.getUTCDate() + days);
+    return toISODate({
+        y: utc.getUTCFullYear(),
+        m: utc.getUTCMonth() + 1,
+        d: utc.getUTCDate(),
+    });
+}
+
+/** Diferencia en días enteros entre dos fechas ISO (a hasta b = b - a). */
+export function daysBetween(fromISO: string, toISO: string): number {
+    const a = parseISODate(fromISO);
+    const b = parseISODate(toISO);
+    if (!a || !b) return 0;
+    const utcA = Date.UTC(a.y, a.m - 1, a.d);
+    const utcB = Date.UTC(b.y, b.m - 1, b.d);
+    return Math.round((utcB - utcA) / (1000 * 60 * 60 * 24));
+}
+
 export function todayISO() {
     const now = new Date();
     return toISODate({ y: now.getFullYear(), m: now.getMonth() + 1, d: now.getDate() });
@@ -365,4 +388,96 @@ export function calcularRenovaciones<R extends Record<string, any>>(
     return resultado.sort((a, b) =>
         a.fecha_renovacion.localeCompare(b.fecha_renovacion) ||
         String(a.aseguradora_nombre ?? '').localeCompare(String(b.aseguradora_nombre ?? '')));
+}
+
+// ---------------------------------------------------------------------------
+// Próximas liquidaciones (próximo mes)
+// ---------------------------------------------------------------------------
+
+export type ProximaLiquidacion<R> = R & {
+    fecha_cobro: string;               // 'YYYY-MM-DD'
+    fecha_limite_liquidacion: string;  // 'YYYY-MM-DD' (fecha_cobro + periodo_dias)
+    dias_restantes: number;            // diferencia en días hasta la fecha límite desde hoy
+    mes_cobro: string;                 // 'YYYY-MM'
+    falta_fecha_baja: boolean;
+};
+
+/**
+ * Calcula las pólizas a liquidar en el intervalo [desde, hasta] (por defecto el próximo mes),
+ * sumando a cada fecha de cobro (que parte de la fecha de efecto según la periodicidad de pago) el
+ * periodo máximo de liquidación en días definido para la aseguradora.
+ */
+export function calcularProximasLiquidaciones<R extends Record<string, any>>(
+    registros: R[],
+    periodoDias: number = 30,
+    desde: string = todayISO(),
+    hasta: string = addMonthsISO(todayISO(), 1),
+): ProximaLiquidacion<R>[] {
+    const d = parseISODate(desde);
+    const h = parseISODate(hasta);
+    if (!d || !h) throw new Error('Intervalo de fechas no válido.');
+    if (desde > hasta) throw new Error('La fecha inicial es posterior a la final.');
+
+    const dias = Number.isFinite(periodoDias) && periodoDias > 0 ? Math.round(periodoDias) : 30;
+    const today = todayISO();
+
+    // Las fechas de cobro que pueden vencer en [desde, hasta] caen en:
+    // cobroMin = desde - dias; cobroMax = hasta - dias
+    const cobroMin = addDaysISO(desde, -dias);
+    const cobroMax = addDaysISO(hasta, -dias);
+    const minYMD = parseISODate(cobroMin)!;
+    const maxYMD = parseISODate(cobroMax)!;
+
+    const minMonthIdx = monthIndex(minYMD.y, minYMD.m);
+    const maxMonthIdx = monthIndex(maxYMD.y, maxYMD.m);
+
+    const resultado: ProximaLiquidacion<R>[] = [];
+
+    for (const reg of registros) {
+        const situacion = normalizeCatalogValue(reg.situacion);
+        const baja = parseISODate(reg.fecha_baja);
+        const sinFechaBaja = situacion === 'BAJA' && !baja;
+        const deAlta = situacion === 'ALTA' && !baja;
+        if (!deAlta && !sinFechaBaja) continue;
+
+        const efecto = parseISODate(reg.fecha_efecto);
+        if (!efecto) continue;
+
+        const tipoPago = normalizeCatalogValue(reg.tipo_pago);
+        if (!isTipoPago(tipoPago)) continue;
+
+        const intervalo = MESES_ENTRE_COBROS[tipoPago];
+        const efectoIdx = monthIndex(efecto.y, efecto.m);
+        const bajaStr = (situacion === 'BAJA' && baja) ? toISODate(baja) : null;
+
+        for (let idx = Math.max(minMonthIdx, efectoIdx); idx <= maxMonthIdx; idx++) {
+            if ((idx - efectoIdx) % intervalo !== 0) continue;
+            const { y, m } = fromMonthIndex(idx);
+            const cobroDay = Math.min(efecto.d, daysInMonth(y, m));
+            const fechaCobro = toISODate({ y, m, d: cobroDay });
+
+            // No puede haber cobro antes de la fecha de efecto
+            if (fechaCobro < toISODate(efecto)) continue;
+
+            // Si está de baja con fecha conocida y es anterior a este cobro, no genera cobro
+            if (bajaStr && bajaStr < fechaCobro) break;
+
+            const fechaLimite = addDaysISO(fechaCobro, dias);
+
+            if (fechaLimite >= desde && fechaLimite <= hasta) {
+                resultado.push({
+                    ...reg,
+                    fecha_cobro: fechaCobro,
+                    fecha_limite_liquidacion: fechaLimite,
+                    dias_restantes: daysBetween(today, fechaLimite),
+                    mes_cobro: `${y}-${pad(m)}`,
+                    falta_fecha_baja: sinFechaBaja,
+                });
+            }
+        }
+    }
+
+    return resultado.sort((a, b) =>
+        a.fecha_limite_liquidacion.localeCompare(b.fecha_limite_liquidacion) ||
+        String(a.cliente ?? '').localeCompare(String(b.cliente ?? '')));
 }

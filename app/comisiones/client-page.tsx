@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, CalendarClock, AlertTriangle, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, ArrowLeft, Building2, Calendar, CalendarClock, AlertTriangle, ChevronRight, FileText, Download, Filter, Search, ChevronDown, ChevronUp, Save, X, Edit2, Check, Clock } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import Link from 'next/link';
-import { fetchAseguradoras, fetchRegistros, createAseguradora, createRegistro, editRegistro, removeRegistro, fetchLiquidacion, fetchRenovaciones } from './actions';
-import { TIPOS_PAGO, SITUACIONES, validateRegistro, addMonthsISO, todayISO, faltaFechaBaja, AVISO_FALTA_FECHA_BAJA, type AvisoLiquidacion } from '@/lib/comisiones-rules';
+import { fetchAseguradoras, fetchRegistros, createAseguradora, editAseguradora, createRegistro, editRegistro, removeRegistro, fetchLiquidacion, fetchRenovaciones, fetchProximasLiquidaciones } from './actions';
+import { TIPOS_PAGO, SITUACIONES, validateRegistro, addMonthsISO, addDaysISO, todayISO, faltaFechaBaja, AVISO_FALTA_FECHA_BAJA, type AvisoLiquidacion, type ProximaLiquidacion } from '@/lib/comisiones-rules';
 import { cn } from '@/lib/utils';
 import React from 'react';
 
@@ -37,6 +37,12 @@ export default function ComisionesClientPage() {
     const [settlementError, setSettlementError] = useState<string | null>(null);
     const [isSettlementView, setIsSettlementView] = useState(false);
     const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+    // Periodo máximo de liquidación (en días) y próximas liquidaciones
+    const [periodoLiquidacionDias, setPeriodoLiquidacionDias] = useState(30);
+    const [editingPeriodo, setEditingPeriodo] = useState(false);
+    const [newPeriodoVal, setNewPeriodoVal] = useState(30);
+    const [proximasLiquidaciones, setProximasLiquidaciones] = useState<ProximaLiquidacion<any>[]>([]);
+    const [loadingProximas, setLoadingProximas] = useState(false);
     // Próximas renovaciones (todas las aseguradoras)
     const [renewalRange, setRenewalRange] = useState(() => ({ start: todayISO(), end: addMonthsISO(todayISO(), 2) }));
     const [renewals, setRenewals] = useState<any[]>([]);
@@ -56,15 +62,51 @@ export default function ComisionesClientPage() {
     async function handleAddAseguradora(e: React.FormEvent) {
         e.preventDefault();
         if (!nombreAseguradora) return;
-        await createAseguradora(nombreAseguradora);
+        const dias = Number(periodoLiquidacionDias) > 0 ? Number(periodoLiquidacionDias) : 30;
+        await createAseguradora(nombreAseguradora, dias);
         setNombreAseguradora('');
+        setPeriodoLiquidacionDias(30);
         setShowNewAseguradora(false);
         loadAseguradoras();
     }
 
     async function handleSelectAseguradora(asig: any) {
         setSelectedAseguradora(asig);
+        setNewPeriodoVal(asig.periodo_liquidacion_dias ?? 30);
+        setEditingPeriodo(false);
         setView('DASHBOARD');
+        loadProximasLiquidaciones(asig);
+    }
+
+    async function loadProximasLiquidaciones(asig: any) {
+        setLoadingProximas(true);
+        try {
+            const dias = asig.periodo_liquidacion_dias ?? 30;
+            const proxs = await fetchProximasLiquidaciones(asig.id, dias, todayISO(), addMonthsISO(todayISO(), 1));
+            setProximasLiquidaciones(proxs);
+        } catch (err) {
+            console.error('Error cargando próximas liquidaciones:', err);
+        } finally {
+            setLoadingProximas(false);
+        }
+    }
+
+    async function handleSavePeriodo() {
+        if (!selectedAseguradora) return;
+        const dias = Number(newPeriodoVal) > 0 ? Number(newPeriodoVal) : 30;
+        await editAseguradora(selectedAseguradora.id, { periodo_liquidacion_dias: dias });
+        const updated = { ...selectedAseguradora, periodo_liquidacion_dias: dias };
+        setSelectedAseguradora(updated);
+        setAseguradoras(aseguradoras.map(a => a.id === updated.id ? updated : a));
+        setEditingPeriodo(false);
+        loadProximasLiquidaciones(updated);
+    }
+
+    function handleExportProximas() {
+        const table = document.getElementById('proximas-liquidaciones-table');
+        if (!table) return;
+        const wb = XLSX.utils.table_to_book(table);
+        XLSX.writeFile(wb, `Proximas_Liquidaciones_${selectedAseguradora?.nombre ?? ''}_${todayISO()}.xlsx`);
     }
 
     const [showFilters, setShowFilters] = useState(false);
@@ -408,18 +450,34 @@ export default function ComisionesClientPage() {
 
                         {showNewAseguradora && (
                             <form onSubmit={handleAddAseguradora} className="glass-card p-8 rounded-3xl border border-secondary/20 mb-10 animate-in slide-in-from-top-4 duration-300">
-                                <div className="flex gap-4">
-                                    <input
-                                        type="text"
-                                        placeholder="Nombre de la aseguradora..."
-                                        value={nombreAseguradora}
-                                        onChange={(e) => setNombreAseguradora(e.target.value)}
-                                        className="flex-1 bg-white/50 dark:bg-slate-800/50 px-6 py-4 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-primary font-bold text-slate-800 dark:text-white"
-                                        autoFocus
-                                    />
-                                    <button type="submit" className="bg-primary text-white px-8 py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-900 transition-all">
-                                        Confirmar
-                                    </button>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center">
+                                    <div className="md:col-span-2">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 ml-1">Nombre de la aseguradora</label>
+                                        <input
+                                            type="text"
+                                            placeholder="Ej. Hiscox, Mapfre, Allianz..."
+                                            value={nombreAseguradora}
+                                            onChange={(e) => setNombreAseguradora(e.target.value)}
+                                            className="w-full bg-white/50 dark:bg-slate-800/50 px-6 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-primary font-bold text-slate-800 dark:text-white"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 block mb-1.5 ml-1">Periodo máx. liquidación (días)</label>
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                placeholder="30"
+                                                value={periodoLiquidacionDias}
+                                                onChange={(e) => setPeriodoLiquidacionDias(Number(e.target.value))}
+                                                className="w-full bg-white/50 dark:bg-slate-800/50 px-4 py-3.5 rounded-xl border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-primary font-bold text-slate-800 dark:text-white"
+                                            />
+                                            <button type="submit" className="bg-primary text-white px-6 py-3.5 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-indigo-900 transition-all whitespace-nowrap">
+                                                Crear
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </form>
                         )}
@@ -440,10 +498,13 @@ export default function ComisionesClientPage() {
                                         className="glass-card p-8 rounded-3xl border border-slate-200/50 dark:border-slate-700/50 shadow-sm hover:border-secondary/50 dark:hover:border-secondary/50 hover:shadow-xl transition-all group text-left relative overflow-hidden"
                                     >
                                         <div className="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full -mr-10 -mt-10 blur-xl group-hover:bg-secondary/10 transition-colors"></div>
-                                        <div className="bg-primary/5 dark:bg-white/5 w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl text-primary dark:text-white group-hover:bg-primary group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-primary transition-colors mb-6 shadow-inner">
+                                        <div className="bg-primary/5 dark:bg-white/5 w-16 h-16 rounded-2xl flex items-center justify-center font-display font-bold text-2xl text-primary dark:text-white group-hover:bg-primary group-hover:text-white dark:group-hover:bg-white dark:group-hover:text-primary transition-colors mb-4 shadow-inner">
                                             {asig.nombre[0]}
                                         </div>
-                                        <h3 className="text-2xl font-display font-bold tracking-tight mb-2 uppercase text-slate-800 dark:text-white">{asig.nombre}</h3>
+                                        <h3 className="text-2xl font-display font-bold tracking-tight mb-1 uppercase text-slate-800 dark:text-white">{asig.nombre}</h3>
+                                        <div className="flex items-center gap-1.5 mb-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-400">
+                                            <Clock className="w-3 h-3 text-secondary" /> Plazo liquidación: {asig.periodo_liquidacion_dias ?? 30} días
+                                        </div>
                                         <p className="text-slate-400 dark:text-slate-500 text-xs font-bold uppercase tracking-widest flex items-center">
                                             Ver Detalles <ChevronRight className="inline w-3 h-3 ml-1 group-hover:translate-x-1 transition-transform" />
                                         </p>
@@ -539,10 +600,167 @@ export default function ComisionesClientPage() {
 
                 {/* VIEW 2: INSURER DASHBOARD */}
                 {view === 'DASHBOARD' && (
-                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                        {/* Removed Year Selector as per request */}
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 pb-20">
+                        {/* Banner de configuración del periodo de liquidación */}
+                        <div className="glass-card p-6 md:p-8 rounded-[32px] border border-slate-200/50 dark:border-slate-700/50 shadow-sm mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6 bg-gradient-to-r from-primary/5 via-white/50 to-secondary/5 dark:from-slate-800/60 dark:to-slate-800/20">
+                            <div>
+                                <div className="flex items-center gap-2 text-secondary font-bold text-[10px] uppercase tracking-widest mb-1">
+                                    <Clock className="w-3.5 h-3.5" /> Configuración de Aseguradora
+                                </div>
+                                <h3 className="text-xl font-display font-bold tracking-tight uppercase text-primary dark:text-white">
+                                    {selectedAseguradora?.nombre}
+                                </h3>
+                                <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                                    Periodo máximo de liquidación: <span className="font-bold text-primary dark:text-secondary">{selectedAseguradora?.periodo_liquidacion_dias ?? 30} días</span> sumados a la fecha de efecto/cobro de cada póliza activa.
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {editingPeriodo ? (
+                                    <div className="flex items-center gap-2 bg-white dark:bg-slate-800 p-2 rounded-2xl border border-secondary shadow-md">
+                                        <label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-2">Días:</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={newPeriodoVal}
+                                            onChange={(e) => setNewPeriodoVal(Number(e.target.value))}
+                                            className="w-20 px-2 py-1 text-sm font-bold bg-slate-100 dark:bg-slate-700 rounded-lg text-primary dark:text-white outline-none"
+                                            autoFocus
+                                        />
+                                        <button
+                                            onClick={handleSavePeriodo}
+                                            className="bg-primary text-secondary p-2 rounded-xl hover:bg-primary/90 transition-all font-bold text-xs"
+                                            title="Guardar"
+                                        >
+                                            <Check className="w-4 h-4" />
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setNewPeriodoVal(selectedAseguradora?.periodo_liquidacion_dias ?? 30);
+                                                setEditingPeriodo(false);
+                                            }}
+                                            className="text-slate-400 hover:text-slate-600 dark:hover:text-white p-2"
+                                            title="Cancelar"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-3 bg-white/80 dark:bg-slate-800/80 px-4 py-2.5 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                                        <div className="text-right">
+                                            <span className="text-[9px] font-bold uppercase tracking-widest text-slate-400 block">Periodo Máx. Liquidación</span>
+                                            <span className="text-sm font-display font-bold text-primary dark:text-secondary">{selectedAseguradora?.periodo_liquidacion_dias ?? 30} días</span>
+                                        </div>
+                                        <button
+                                            onClick={() => setEditingPeriodo(true)}
+                                            className="hover:bg-slate-100 dark:hover:bg-slate-700 p-2 rounded-xl text-slate-500 hover:text-primary dark:hover:text-secondary transition-all"
+                                            title="Modificar periodo de liquidación"
+                                        >
+                                            <Edit2 className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                        {/* Sección: Próximas Liquidaciones (Próximo Mes) */}
+                        <div className="glass-card rounded-[32px] p-8 border border-slate-200/50 dark:border-slate-700/50 shadow-sm mb-12 relative overflow-hidden">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="w-2.5 h-2.5 rounded-full bg-secondary animate-pulse"></span>
+                                        <h3 className="text-2xl font-display font-bold uppercase tracking-tight text-primary dark:text-white">
+                                            Próximas Liquidaciones (Próximo Mes)
+                                        </h3>
+                                        <span className="bg-secondary/20 text-yellow-900 dark:text-yellow-200 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-secondary/30 uppercase tracking-widest">
+                                            {proximasLiquidaciones.length} {proximasLiquidaciones.length === 1 ? 'póliza' : 'pólizas'}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">
+                                        Pólizas activas con fecha límite de liquidación en los próximos 30 días (cobro + {selectedAseguradora?.periodo_liquidacion_dias ?? 30} días).
+                                    </p>
+                                </div>
+                                {proximasLiquidaciones.length > 0 && (
+                                    <button
+                                        onClick={handleExportProximas}
+                                        className="bg-primary text-white hover:bg-indigo-900 px-5 py-2.5 rounded-full font-bold text-xs uppercase tracking-widest flex items-center gap-2 shadow-md transition-all self-start md:self-auto"
+                                    >
+                                        <Download className="w-4 h-4" /> Descargar Excel
+                                    </button>
+                                )}
+                            </div>
+
+                            {loadingProximas ? (
+                                <div className="py-16 text-center text-slate-400 font-bold uppercase tracking-widest flex flex-col items-center">
+                                    <div className="w-6 h-6 border-2 border-secondary border-t-transparent rounded-full animate-spin mb-3"></div>
+                                    Calculando próximas liquidaciones...
+                                </div>
+                            ) : proximasLiquidaciones.length === 0 ? (
+                                <div className="py-12 px-6 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center bg-slate-50/50 dark:bg-slate-900/30">
+                                    <CalendarClock className="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+                                    <p className="text-slate-600 dark:text-slate-300 font-bold text-sm">No hay liquidaciones pendientes para el próximo mes</p>
+                                    <p className="text-slate-400 text-xs mt-1">Todas las pólizas activas están al día o sus cobros vencen más adelante según el plazo de {selectedAseguradora?.periodo_liquidacion_dias ?? 30} días.</p>
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-700">
+                                    <table className="w-full text-left border-collapse" id="proximas-liquidaciones-table">
+                                        <thead>
+                                            <tr className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                                                {[
+                                                    'Límite Liq.', 'Plazo Restante', 'Cliente', 'Situación', 'Fecha Baja', 'Pago',
+                                                    'Póliza', 'Fecha Cobro', 'Fecha Efecto', 'Producto', 'Prima Neta',
+                                                    'Prima Total', '% Comis.', 'Neto Comis.', 'Liq. Aseguradora', 'Observaciones'
+                                                ].map(h => (
+                                                    <th key={h} className="px-4 py-3 text-[9px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 whitespace-nowrap">{h}</th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                            {proximasLiquidaciones.map((reg, idx) => (
+                                                <tr key={idx} className={cn("transition-colors", reg.falta_fecha_baja ? ROW_FALTA_BAJA : "hover:bg-white/50 dark:hover:bg-slate-800/50")}>
+                                                    <td className="px-4 py-3 font-bold text-slate-900 dark:text-white text-[10px] whitespace-nowrap">
+                                                        {formatDate(reg.fecha_limite_liquidacion)}
+                                                    </td>
+                                                    <td className="px-4 py-3 whitespace-nowrap">
+                                                        <span className={cn(
+                                                            "text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full inline-block",
+                                                            reg.dias_restantes <= 5 ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800" :
+                                                            reg.dias_restantes <= 15 ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800" :
+                                                            "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800"
+                                                        )}>
+                                                            {reg.dias_restantes === 0 ? "¡Vence hoy!" : reg.dias_restantes < 0 ? `Vencida (${Math.abs(reg.dias_restantes)}d)` : `En ${reg.dias_restantes} días`}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 font-bold text-[10px] whitespace-nowrap text-slate-800 dark:text-slate-200">{reg.cliente}</td>
+                                                    <td className="px-4 py-3"><SituacionBadge situacion={reg.situacion} /></td>
+                                                    <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap"><FechaBajaCell reg={reg} /></td>
+                                                    <td className="px-4 py-3"><span className="text-[8px] font-bold uppercase tracking-widest bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded-md text-slate-500">{reg.tipo_pago}</span></td>
+                                                    <td className="px-4 py-3 font-mono text-[9px] text-slate-600 dark:text-slate-400 whitespace-nowrap">{reg.numero_poliza}</td>
+                                                    <td className="px-4 py-3 text-[9px] text-slate-700 dark:text-slate-300 font-bold whitespace-nowrap">{formatDate(reg.fecha_cobro)}</td>
+                                                    <td className="px-4 py-3 text-[9px] text-slate-500 dark:text-slate-400 font-bold whitespace-nowrap">{formatDate(reg.fecha_efecto)}</td>
+                                                    <td className="px-4 py-3 text-[9px] font-bold whitespace-nowrap text-slate-600 dark:text-slate-400">{reg.producto}</td>
+                                                    <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_neta ?? 0).toFixed(2)}€</td>
+                                                    <td className="px-4 py-3 font-bold text-[10px] text-slate-700 dark:text-slate-300">{Number(reg.prima_total ?? 0).toFixed(2)}€</td>
+                                                    <td className="px-4 py-3 font-bold text-primary dark:text-secondary text-[10px]">{Number(reg.porcentaje_comision ?? 0).toFixed(2)}%</td>
+                                                    <td className="px-4 py-3 font-bold text-primary dark:text-slate-200 text-[10px]">{Number(reg.neto_comision ?? 0).toFixed(2)}€</td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="bg-secondary/20 text-yellow-900 dark:text-yellow-100 font-bold text-[10px] px-2 py-1 rounded-lg border border-secondary/40 inline-block">
+                                                            {Number(reg.importe_liquidar ?? 0).toFixed(2)}€
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3"><Observacion falta={reg.falta_fecha_baja} /></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Sección: Navegación por Categorías */}
+                        <div className="mb-4">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-slate-400 ml-1">Consultar Registros Históricos</h4>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             {categories.map(cat => (
                                 <button
                                     key={cat}

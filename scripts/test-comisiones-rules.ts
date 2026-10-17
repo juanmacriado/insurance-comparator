@@ -1,6 +1,6 @@
 // Pruebas completas de las reglas de comisiones (EV-01 a EV-08).
 // Ejecutar: npx tsx scripts/test-comisiones-rules.ts
-import { calcularLiquidacion as L, calcularRenovaciones as R, validateRegistro as V } from '../lib/comisiones-rules';
+import { calcularLiquidacion as L, calcularRenovaciones as R, validateRegistro as V, calcularProximasLiquidaciones as PL } from '../lib/comisiones-rules';
 import assert from 'node:assert/strict';
 
 const meses = (r: any) => r.lineas.map((l: any) => l.mes_liquidacion);
@@ -204,6 +204,42 @@ const v07 = V({ cliente: 'a', numero_poliza: '1', tipo_pago: 'ANUAL', situacion:
 assert.equal(v07.value.año, 2024);
 console.log('✓ V07: Año inferido correctamente de fecha_efecto');
 
+console.log('\n--- Comprobando Próximas Liquidaciones (PL01 a PL04) ---');
+
+// PL01: Mensual efecto 25/09/2026, periodo aseguradora 30 días, ventana 17/10/2026 a 17/11/2026 -> Cobro 25/09 vence 25/10 (en ventana)
+const pl01 = PL([
+    { id: 1, cliente: 'A', situacion: 'ALTA', tipo_pago: 'MENSUAL', fecha_efecto: '2026-09-25' }
+], 30, '2026-10-17', '2026-11-17');
+assert.equal(pl01.length, 1);
+assert.equal(pl01[0].fecha_cobro, '2026-09-25');
+assert.equal(pl01[0].fecha_limite_liquidacion, '2026-10-25');
+console.log('✓ PL01: Próxima liquidación mensual calculada con +30 días sobre fecha de cobro');
+
+// PL02: Anual efecto 10/10/2025, periodo aseguradora 30 días, ventana 17/10/2026 a 17/11/2026 -> Cobro 10/10/2026 vence 09/11/2026
+const pl02 = PL([
+    { id: 2, cliente: 'B', situacion: 'ALTA', tipo_pago: 'ANUAL', fecha_efecto: '2025-10-10' }
+], 30, '2026-10-17', '2026-11-17');
+assert.equal(pl02.length, 1);
+assert.equal(pl02[0].fecha_cobro, '2026-10-10');
+assert.equal(pl02[0].fecha_limite_liquidacion, '2026-11-09');
+console.log('✓ PL02: Próxima liquidación anual (aniversario + 30 días) incluida en el próximo mes');
+
+// PL03: BAJA confirmada antes del cobro -> excluida
+const pl03 = PL([
+    { id: 3, cliente: 'C', situacion: 'BAJA', tipo_pago: 'MENSUAL', fecha_efecto: '2026-08-25', fecha_baja: '2026-09-20' }
+], 30, '2026-10-17', '2026-11-17');
+assert.equal(pl03.length, 0);
+console.log('✓ PL03: Póliza de BAJA con fecha de baja anterior al cobro queda excluida');
+
+// PL04: BAJA sin fecha -> incluida por precaución con falta_fecha_baja = true
+const pl04 = PL([
+    { id: 4, cliente: 'D', situacion: 'BAJA', tipo_pago: 'MENSUAL', fecha_efecto: '2026-09-25' }
+], 30, '2026-10-17', '2026-11-17');
+assert.equal(pl04.length, 1);
+assert.ok(pl04[0].falta_fecha_baja === true);
+console.log('✓ PL04: BAJA sin fecha de baja se incluye por precaución destacada');
+
 console.log('\n========================================');
-console.log('¡TODOS LOS CASOS DE PRUEBA (P01-P13, R01-R08, V01-V07) HAN PASADO CON ÉXITO!');
+console.log('¡TODOS LOS CASOS DE PRUEBA (P01-P17, R01-R08, V01-V07, PL01-PL04) HAN PASADO CON ÉXITO!');
+
 console.log('========================================\n');

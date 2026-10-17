@@ -1,7 +1,7 @@
 'use server';
 
-import { getAseguradoras, getRegistros, getRegistrosConAseguradora, addAseguradora, addRegistro, updateRegistro, deleteRegistro } from '../../lib/db';
-import { validateRegistro, calcularLiquidacion, calcularRenovaciones } from '../../lib/comisiones-rules';
+import { getAseguradoras, getRegistros, getRegistrosConAseguradora, addAseguradora, updateAseguradora, addRegistro, updateRegistro, deleteRegistro } from '../../lib/db';
+import { validateRegistro, calcularLiquidacion, calcularRenovaciones, calcularProximasLiquidaciones } from '../../lib/comisiones-rules';
 
 export type SaveResult = { ok: true } | { ok: false; errors: Record<string, string> };
 
@@ -13,8 +13,18 @@ export async function fetchRegistros(aseguradoraId: number, año: number | null 
     return await getRegistros(aseguradoraId, año, tipo);
 }
 
-export async function createAseguradora(nombre: string) {
-    return await addAseguradora(nombre);
+export async function createAseguradora(nombre: string, periodoLiquidacionDias: number = 30) {
+    return await addAseguradora(nombre, periodoLiquidacionDias);
+}
+
+export async function editAseguradora(id: number, data: { nombre?: string; periodo_liquidacion_dias?: number }) {
+    return await updateAseguradora(id, data);
+}
+
+/** Pólizas de una aseguradora a liquidar en el próximo periodo/mes (sumando periodo_liquidacion_dias). */
+export async function fetchProximasLiquidaciones(aseguradoraId: number, periodoDias: number, desde?: string, hasta?: string) {
+    const registros = await getRegistros(aseguradoraId, null, null);
+    return calcularProximasLiquidaciones(registros, periodoDias, desde, hasta);
 }
 
 export async function createRegistro(registro: any): Promise<SaveResult> {

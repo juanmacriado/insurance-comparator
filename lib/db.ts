@@ -8,6 +8,7 @@ function ensureSchema() {
   if (!schemaReady) {
     schemaReady = (async () => {
       await sql`ALTER TABLE registros_comisiones ADD COLUMN IF NOT EXISTS fecha_baja TEXT`;
+      await sql`ALTER TABLE aseguradoras ADD COLUMN IF NOT EXISTS periodo_liquidacion_dias INTEGER DEFAULT 30`;
     })().catch((error) => {
       schemaReady = null; // reintentar en la siguiente llamada
       throw error;
@@ -17,15 +18,16 @@ function ensureSchema() {
 }
 
 async function getAseguradoras() {
+  await ensureSchema();
   const { rows } = await sql`SELECT * FROM aseguradoras ORDER BY nombre ASC`;
   return rows;
 }
 
-async function addAseguradora(nombre: string) {
-  // Try to insert
+async function addAseguradora(nombre: string, periodoLiquidacionDias: number = 30) {
+  await ensureSchema();
   const result = await sql`
-    INSERT INTO aseguradoras (nombre) VALUES (${nombre})
-    ON CONFLICT (nombre) DO NOTHING
+    INSERT INTO aseguradoras (nombre, periodo_liquidacion_dias) VALUES (${nombre}, ${periodoLiquidacionDias})
+    ON CONFLICT (nombre) DO UPDATE SET periodo_liquidacion_dias = EXCLUDED.periodo_liquidacion_dias
     RETURNING id
   `;
 
@@ -36,6 +38,18 @@ async function addAseguradora(nombre: string) {
     const existing = await sql`SELECT id FROM aseguradoras WHERE nombre = ${nombre}`;
     return existing.rows[0].id;
   }
+}
+
+async function updateAseguradora(id: number, data: { nombre?: string; periodo_liquidacion_dias?: number }) {
+  await ensureSchema();
+  if (data.nombre !== undefined && data.periodo_liquidacion_dias !== undefined) {
+    await sql`UPDATE aseguradoras SET nombre = ${data.nombre}, periodo_liquidacion_dias = ${data.periodo_liquidacion_dias} WHERE id = ${id}`;
+  } else if (data.periodo_liquidacion_dias !== undefined) {
+    await sql`UPDATE aseguradoras SET periodo_liquidacion_dias = ${data.periodo_liquidacion_dias} WHERE id = ${id}`;
+  } else if (data.nombre !== undefined) {
+    await sql`UPDATE aseguradoras SET nombre = ${data.nombre} WHERE id = ${id}`;
+  }
+  return { success: true };
 }
 
 async function getRegistros(aseguradoraId: number, año: number | null = null, tipo: string | null = null) {
@@ -155,6 +169,7 @@ export {
   sql, // exporting sql client just in case
   getAseguradoras,
   addAseguradora,
+  updateAseguradora,
   getRegistros,
   getRegistrosConAseguradora,
   addRegistro,

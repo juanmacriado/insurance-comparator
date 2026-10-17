@@ -7,7 +7,8 @@ async function initDB() {
     await sql`
       CREATE TABLE IF NOT EXISTS aseguradoras (
         id SERIAL PRIMARY KEY,
-        nombre TEXT UNIQUE NOT NULL
+        nombre TEXT UNIQUE NOT NULL,
+        periodo_liquidacion_dias INTEGER DEFAULT 30
       );
     `;
 
