@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.13 · 18/10/2026**
+> **Versión 1.14 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.14 | 18/10/2026 | EV-08: el informe semanal comprueba en info@xeoris.com si la aseguradora ha enviado el aviso de renovación de cada póliza (✅ recibido / 🔎 revisar / ❌ falta, reclamar) y añade un control inverso de avisos de Hiscox sin póliza de ALTA en el portal. |
 | 1.13 | 18/10/2026 | EV-08: el informe semanal pasa a enviarse a los cuatro destinatarios (Helena Sansalvador, Omar Abarkan, Ricardo Sánchez y Juanma Criado); los avisos de error, solo a Juanma. La tarea evita envíos duplicados y descarta pólizas de BAJA. |
 | 1.12 | 18/10/2026 | Regla de renovaciones: una póliza de **BAJA nunca renueva**, tenga o no fecha de baja (antes las de BAJA sin fecha se incluían por precaución). Las liquidaciones mantienen la regla de precaución. |
 | 1.11 | 18/10/2026 | EV-08 en producción: ruta `/api/renovaciones` desplegada y tarea programada de Claude creada (envío provisional solo a juanma.criado@xeoris.com). Prueba real: 34 pólizas, 11 sin fecha de baja, 50.942,69 €. |
@@ -458,6 +459,10 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 - Antes de enviar comprueba en *Elementos enviados* que no haya salido ya el informe ese día (evita duplicados) y descarta cualquier póliza de BAJA.
 - Lección aprendida: la herramienta de lectura web de Claude **no devuelve el contenido literal** (límite de cita), pero sí una **extracción estructurada** a tabla. Por eso la tarea pide la tabla y después comprueba nº de filas, nº de avisos y suma de primas contra la línea `CONTROL` antes de enviar.
 - Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ compartían nº de póliza con un registro de alta (anualidad anterior). Con la regla del 18/10/2026 (las de BAJA no renuevan) dejan de aparecer.
+
+- **Control de avisos de renovación de la aseguradora (desde v1.14)**: para cada póliza del informe, la tarea busca en info@xeoris.com un aviso de renovación de la aseguradora recibido desde 150 días antes de la renovación, primero por nº de póliza y si no por nombre del cliente. Formato habitual de Hiscox: remitente `riesgosprofesionales@hiscox.com`, asunto `[nº póliza] [CLIENTE] / [CIF] - Renewal Schedule`, texto "procedemos con la renovación de esta póliza…". No cuentan cotizaciones, suplementos ni correos de comisiones. Resultado por póliza: ✅ recibido (con enlace al correo), 🔎 revisar (coincidencia solo por nombre o correo compartido por dos pólizas) o ❌ falta correo · reclamar. El correo incluye la lista de pendientes de reclamar con los días que faltan.
+- **Control inverso**: avisos "Renewal Schedule" de Hiscox de los últimos 120 días cuyo nº de póliza no está entre las renovaciones de ALTA del portal (p. ej. pólizas que figuran de BAJA pero Hiscox renueva, como Cyber-Scope 3569981): se listan para revisar.
+- Prueba manual del 18/10/2026: 23 pólizas → ✅ 8 · 🔎 2 · ❌ 13; control inverso: 5 avisos (Cyber-Scope, Inflection Point, Lexsuite, Santuario de Zorita, Sincronet 3600642).
 
 **Diseño original (referencia)**
 - Tarea programada: **lunes a las 07:58 (hora de Madrid)**.
