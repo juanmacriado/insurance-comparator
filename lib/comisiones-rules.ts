@@ -355,6 +355,9 @@ export type Renovacion<R> = R & {
  * cae dentro de [desde, hasta] (fechas ISO, ambas incluidas).
  * Las de BAJA nunca renuevan, tengan o no fecha de baja (`falta_fecha_baja` siempre es false aquí).
  * Un 29 de febrero renueva el 28 en años no bisiestos.
+ *
+ * Anualidad: se calcula a partir del registro más antiguo con el mismo número de póliza,
+ * evitando que se reinicie a "1ª" cuando se crea un nuevo registro con la fecha de la última renovación.
  */
 export function calcularRenovaciones<R extends Record<string, any>>(
     registros: R[],
@@ -365,6 +368,19 @@ export function calcularRenovaciones<R extends Record<string, any>>(
     const h = parseISODate(hasta);
     if (!d || !h) throw new Error('Intervalo de fechas no válido.');
     if (desde > hasta) throw new Error('La fecha inicial es posterior a la final.');
+
+    // 1. Mapeo de fecha de efecto más antigua por número de póliza (para anualidad histórica continua)
+    const primerEfectoPorPoliza = new Map<string, YMD>();
+    for (const reg of registros) {
+        const polKey = String(reg.numero_poliza ?? '').trim().toUpperCase();
+        if (!polKey) continue;
+        const efecto = parseISODate(reg.fecha_efecto);
+        if (!efecto) continue;
+        const previo = primerEfectoPorPoliza.get(polKey);
+        if (!previo || toISODate(efecto) < toISODate(previo)) {
+            primerEfectoPorPoliza.set(polKey, efecto);
+        }
+    }
 
     const resultado: Renovacion<R>[] = [];
 
@@ -377,17 +393,90 @@ export function calcularRenovaciones<R extends Record<string, any>>(
         const efecto = parseISODate(reg.fecha_efecto);
         if (!efecto) continue;
 
+        const polKey = String(reg.numero_poliza ?? '').trim().toUpperCase();
+        const origen = polKey ? (primerEfectoPorPoliza.get(polKey) ?? efecto) : efecto;
+
         for (let y = Math.max(d.y, efecto.y + 1); y <= h.y; y++) {
             const fecha = toISODate({ y, m: efecto.m, d: Math.min(efecto.d, daysInMonth(y, efecto.m)) });
             if (fecha >= desde && fecha <= hasta) {
-                resultado.push({ ...reg, fecha_renovacion: fecha, anualidad: y - efecto.y, falta_fecha_baja: false });
+                const anualidad = Math.max(1, y - origen.y);
+                resultado.push({ ...reg, fecha_renovacion: fecha, anualidad, falta_fecha_baja: false });
             }
         }
     }
 
-    return resultado.sort((a, b) =>
+    // Deduplicar si una misma póliza tuviera varios registros activos que generasen la misma fecha de renovación
+    const porClave = new Map<string, Renovacion<R>>();
+    for (const r of resultado) {
+        const polKey = String(r.numero_poliza ?? '').trim().toUpperCase();
+        const dedupeKey = polKey ? `${polKey}__${r.fecha_renovacion}` : String(r.id ?? Math.random());
+        const existente = porClave.get(dedupeKey);
+        if (!existente) {
+            porClave.set(dedupeKey, r);
+        } else {
+            const efectoActual = parseISODate(r.fecha_efecto);
+            const efectoExistente = parseISODate(existente.fecha_efecto);
+            if (efectoActual && efectoExistente && toISODate(efectoActual) > toISODate(efectoExistente)) {
+                porClave.set(dedupeKey, r);
+            }
+        }
+    }
+
+    return Array.from(porClave.values()).sort((a, b) =>
         a.fecha_renovacion.localeCompare(b.fecha_renovacion) ||
         String(a.aseguradora_nombre ?? '').localeCompare(String(b.aseguradora_nombre ?? '')));
+}
+
+// ---------------------------------------------------------------------------
+// Pólizas de ALTA vigentes
+// ---------------------------------------------------------------------------
+
+export type AltaVigente<R> = {
+    numero_poliza: string;
+    cliente: string;
+    producto: string;
+    fecha_efecto: string;
+    aseguradora: string;
+    tipo_pago: string;
+    prima_total: number;
+    prima_neta: number;
+    raw?: R;
+};
+
+/**
+ * Devuelve la lista de pólizas que se encuentran actualmente en situación de ALTA
+ * (sin fecha de baja). Permite al agente de Claude o integraciones comprobar si
+ * una póliza comunicada por la aseguradora ya está registrada como ALTA en el portal.
+ */
+export function obtenerAltasVigentes<R extends Record<string, any>>(registros: R[]): AltaVigente<R>[] {
+    const resultado: AltaVigente<R>[] = [];
+
+    for (const reg of registros) {
+        const situacion = normalizeCatalogValue(reg.situacion);
+        const deAlta = situacion === 'ALTA' && !parseISODate(reg.fecha_baja);
+        if (!deAlta) continue;
+
+        const poliza = String(reg.numero_poliza ?? '').trim();
+        if (!poliza) continue;
+
+        resultado.push({
+            numero_poliza: poliza,
+            cliente: String(reg.cliente ?? '').trim(),
+            producto: String(reg.producto ?? '').trim(),
+            fecha_efecto: String(reg.fecha_efecto ?? '').trim(),
+            aseguradora: String(reg.aseguradora_nombre ?? reg.aseguradora ?? '').trim(),
+            tipo_pago: String(reg.tipo_pago ?? '').trim(),
+            prima_total: Number(reg.prima_total ?? 0),
+            prima_neta: Number(reg.prima_neta ?? 0),
+            raw: reg,
+        });
+    }
+
+    // Ordenar por fecha de efecto descendente (más recientes primero) y luego por cliente
+    return resultado.sort((a, b) =>
+        b.fecha_efecto.localeCompare(a.fecha_efecto) ||
+        a.cliente.localeCompare(b.cliente, 'es', { sensitivity: 'base' })
+    );
 }
 
 // ---------------------------------------------------------------------------

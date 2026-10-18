@@ -1,6 +1,6 @@
 // Pruebas completas de las reglas de comisiones (EV-01 a EV-08).
 // Ejecutar: npx tsx scripts/test-comisiones-rules.ts
-import { calcularLiquidacion as L, calcularRenovaciones as R, validateRegistro as V, calcularProximasLiquidaciones as PL } from '../lib/comisiones-rules';
+import { calcularLiquidacion as L, calcularRenovaciones as R, validateRegistro as V, calcularProximasLiquidaciones as PL, obtenerAltasVigentes as AV } from '../lib/comisiones-rules';
 import assert from 'node:assert/strict';
 
 const meses = (r: any) => r.lineas.map((l: any) => l.mes_liquidacion);
@@ -172,6 +172,26 @@ assert.equal(
 );
 console.log('✓ R08: Pagos trimestrales y semestrales se renuevan anualmente');
 
+// R09: Anualidad continua calculada a partir del registro más antiguo con el mismo número de póliza
+// Caso Comunistone: nuevo registro con efecto 2026-11-20, pero con registro original histórico de 2023-11-20
+const renComunistone = R([
+    { id: 10, numero_poliza: 'POL-COMUNISTONE', situacion: 'BAJA', fecha_efecto: '2023-11-20', fecha_baja: '2026-11-20' }, // histórico
+    { id: 11, numero_poliza: 'POL-COMUNISTONE', situacion: 'ALTA', fecha_efecto: '2026-11-20' }                            // nuevo registro de alta
+], '2027-11-01', '2027-11-30');
+assert.equal(renComunistone.length, 1);
+assert.equal(renComunistone[0].fecha_renovacion, '2027-11-20');
+assert.equal(renComunistone[0].anualidad, 4); // 2027 - 2023 = 4ª anualidad, no se reinicia a 1ª
+console.log('✓ R09: La anualidad no se reinicia con el nuevo registro de ALTA; cuenta desde el origen histórico');
+
+// R10: Deduplicación si dos registros de la misma póliza generasen la misma fecha de renovación
+const renDedupe = R([
+    { id: 20, numero_poliza: 'POL-DUP', situacion: 'ALTA', fecha_efecto: '2024-05-10', prima_total: 500 },
+    { id: 21, numero_poliza: 'POL-DUP', situacion: 'ALTA', fecha_efecto: '2025-05-10', prima_total: 550 }
+], '2026-05-01', '2026-05-31');
+assert.equal(renDedupe.length, 1);
+assert.equal(renDedupe[0].id, 21); // Conserva el registro más reciente
+console.log('✓ R10: Deduplicación de renovación para la misma póliza y fecha');
+
 console.log('\n--- Comprobando Validación (V01 a V06) ---');
 
 // V01: BAJA sin fecha de baja -> error
@@ -241,7 +261,29 @@ assert.equal(pl04.length, 1);
 assert.ok(pl04[0].falta_fecha_baja === true);
 console.log('✓ PL04: BAJA sin fecha de baja se incluye por precaución destacada');
 
-console.log('\n========================================');
-console.log('¡TODOS LOS CASOS DE PRUEBA (P01-P17, R01-R08, V01-V07, PL01-PL04) HAN PASADO CON ÉXITO!');
+console.log('\n--- Comprobando Pólizas de ALTA Vigentes (AV01 a AV02) ---');
 
+// AV01: Filtra solo pólizas de ALTA activas (excluye BAJAs y ALTA con fecha_baja)
+const altas = AV([
+    { id: 1, numero_poliza: 'P1', cliente: 'Cliente A', producto: 'RC', fecha_efecto: '2026-10-01', situacion: 'ALTA', aseguradora_nombre: 'Hiscox', tipo_pago: 'ANUAL', prima_total: 1000, prima_neta: 800 },
+    { id: 2, numero_poliza: 'P2', cliente: 'Cliente B', producto: 'D&O', fecha_efecto: '2026-11-15', situacion: 'ALTA', aseguradora_nombre: 'Hiscox', tipo_pago: 'ANUAL', prima_total: 1500, prima_neta: 1200 },
+    { id: 3, numero_poliza: 'P3', cliente: 'Cliente C', producto: 'CIBER', fecha_efecto: '2025-01-01', situacion: 'BAJA', fecha_baja: '2026-05-01' },
+    { id: 4, numero_poliza: 'P4', cliente: 'Cliente D', producto: 'VIDA', fecha_efecto: '2025-01-01', situacion: 'ALTA', fecha_baja: '2026-05-01' }, // inconsistente con fecha_baja
+    { id: 5, numero_poliza: '', cliente: 'Cliente E', producto: 'AUTO', fecha_efecto: '2026-01-01', situacion: 'ALTA' } // sin nº póliza
+]);
+assert.equal(altas.length, 2);
+assert.equal(altas[0].numero_poliza, 'P2'); // 2026-11-15 va antes que 2026-10-01 por orden DESC de fecha_efecto
+assert.equal(altas[1].numero_poliza, 'P1');
+assert.equal(altas[0].aseguradora, 'Hiscox');
+console.log('✓ AV01: Solo incluye pólizas en ALTA activa, ordenadas por fecha de efecto descendente');
+
+// AV02: Control inverso para agente Claude - detección de ALTA ya registrada cerca de la fecha de renovación
+const avisoHiscox = { poliza: 'P2', fecha_renovacion_aviso: '2026-11-15' };
+const yaRegistrada = altas.some(a => a.numero_poliza === avisoHiscox.poliza && Math.abs(new Date(a.fecha_efecto).getTime() - new Date(avisoHiscox.fecha_renovacion_aviso).getTime()) <= 31 * 86400000);
+assert.ok(yaRegistrada);
+console.log('✓ AV02: Control inverso detecta correctamente que la póliza avisada ya tiene un registro de ALTA');
+
+console.log('\n========================================');
+console.log('¡TODOS LOS CASOS DE PRUEBA (P01-P17, R01-R10, V01-V07, PL01-PL04, AV01-AV02) HAN PASADO CON ÉXITO!');
 console.log('========================================\n');
+

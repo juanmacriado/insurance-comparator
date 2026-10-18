@@ -1,19 +1,27 @@
 import { timingSafeEqual } from 'crypto';
 import { auth } from '@/auth';
 import { getRegistrosConAseguradora } from '@/lib/db';
-import { calcularRenovaciones, addMonthsISO } from '@/lib/comisiones-rules';
+import { calcularRenovaciones, obtenerAltasVigentes, addMonthsISO } from '@/lib/comisiones-rules';
 
 export const dynamic = 'force-dynamic';
 
 /**
- * GET /api/renovaciones?meses=3  (EV-08)
+ * GET /api/renovaciones?meses=3&formato=texto  (EV-08)
  *
- * Devuelve en JSON las pólizas que renuevan desde hoy (hora de España) hasta dentro de `meses`
- * (1–12, por defecto 3), con la misma regla que la pantalla "Próximas renovaciones".
- * La usa la tarea programada de Claude que envía el informe semanal por correo.
+ * Devuelve en JSON o texto plano:
+ * 1. Las pólizas que renuevan desde hoy hasta dentro de `meses` (1–12, por defecto 3).
+ * 2. La lista de pólizas en situación de ALTA vigentes (número, cliente, producto y fecha de efecto),
+ *    utilizadas por el agente de Claude para el control inverso (evitar falsos avisos de renovaciones
+ *    que ya han sido dadas de alta en el portal).
  *
- * Acceso: cabecera `Authorization: Bearer <RENEWALS_API_TOKEN>` o un administrador con sesión.
- * Solo lectura. /api queda fuera del middleware de login, por eso se comprueba aquí.
+ * Parámetros opcionales:
+ * - `meses`: nº de meses a consultar (1–12, por defecto 3).
+ * - `formato=texto`: devuelve tabla de texto estructurada con controles de fila.
+ * - `tipo=altas`: devuelve únicamente las pólizas de alta vigentes.
+ * - `tipo=renovaciones`: devuelve únicamente las renovaciones.
+ *
+ * Acceso: cabecera `Authorization: Bearer <RENEWALS_API_TOKEN>`, parámetro `?token=<RENEWALS_API_TOKEN>`
+ * o un administrador con sesión.
  */
 
 function tokenOk(request: Request) {
@@ -55,12 +63,17 @@ export async function GET(request: Request) {
         }
     }
 
-    const mesesParam = Number(new URL(request.url).searchParams.get('meses') ?? 3);
+    const url = new URL(request.url);
+    const mesesParam = Number(url.searchParams.get('meses') ?? 3);
     const meses = Number.isInteger(mesesParam) && mesesParam >= 1 && mesesParam <= 12 ? mesesParam : 3;
     const desde = todayInMadrid();
     const hasta = addMonthsISO(desde, meses);
+    const tipo = url.searchParams.get('tipo'); // 'altas' | 'renovaciones' | null (ambos)
+    const formato = url.searchParams.get('formato');
 
-    const renovaciones = calcularRenovaciones(await getRegistrosConAseguradora(), desde, hasta).map(r => ({
+    const todosRegistros = await getRegistrosConAseguradora();
+
+    const renovaciones = calcularRenovaciones(todosRegistros, desde, hasta).map(r => ({
         fecha_renovacion: r.fecha_renovacion,
         anualidad: r.anualidad,
         aseguradora: r.aseguradora_nombre,
@@ -81,26 +94,56 @@ export async function GET(request: Request) {
     const sinFechaBaja = renovaciones.filter(r => r.falta_fecha_baja).length;
     const primaTotal = Math.round(renovaciones.reduce((acc, r) => acc + r.prima_total, 0) * 100) / 100;
 
+    const altasVigentes = obtenerAltasVigentes(todosRegistros);
+    const totalAltas = altasVigentes.length;
+
     // ?formato=texto → tabla de texto compacta con totales de control (la usa la tarea programada de Claude)
-    if (new URL(request.url).searchParams.get('formato') === 'texto') {
-        const lines = [
-            `INFORME DE RENOVACIONES | desde ${fmtDate(desde)} | hasta ${fmtDate(hasta)} | meses ${meses}`,
-            `CONTROL | filas ${total} | sin_fecha_baja ${sinFechaBaja} | prima_total ${fmtEuro(primaTotal)}`,
-            `COLUMNAS | n | renueva | anualidad | aseguradora | cliente | poliza | producto | tipo_pago | prima_total | aviso`,
-            ...renovaciones.map((r, i) => [
-                `FILA ${i + 1}`,
-                fmtDate(r.fecha_renovacion),
-                `${r.anualidad}ª`,
-                clean(r.aseguradora),
-                clean(r.cliente),
-                clean(r.numero_poliza),
-                clean(r.producto),
-                clean(r.tipo_pago),
-                fmtEuro(r.prima_total),
-                r.falta_fecha_baja ? 'FALTA FECHA DE BAJA' : '-',
-            ].join(' | ')),
-            `FIN | filas ${total}`,
-        ];
+    if (formato === 'texto') {
+        const lines: string[] = [];
+
+        // 1. Si no es solo 'altas', incluimos la tabla de renovaciones
+        if (tipo !== 'altas') {
+            lines.push(
+                `INFORME DE RENOVACIONES | desde ${fmtDate(desde)} | hasta ${fmtDate(hasta)} | meses ${meses}`,
+                `CONTROL | filas ${total} | sin_fecha_baja ${sinFechaBaja} | prima_total ${fmtEuro(primaTotal)}`,
+                `COLUMNAS | n | renueva | anualidad | aseguradora | cliente | poliza | producto | tipo_pago | prima_total | aviso`,
+                ...renovaciones.map((r, i) => [
+                    `FILA ${i + 1}`,
+                    fmtDate(r.fecha_renovacion),
+                    `${r.anualidad}ª`,
+                    clean(r.aseguradora),
+                    clean(r.cliente),
+                    clean(r.numero_poliza),
+                    clean(r.producto),
+                    clean(r.tipo_pago),
+                    fmtEuro(r.prima_total),
+                    r.falta_fecha_baja ? 'FALTA FECHA DE BAJA' : '-',
+                ].join(' | ')),
+                `FIN | filas ${total}`,
+            );
+        }
+
+        // 2. Si no es solo 'renovaciones', incluimos la tabla de pólizas de ALTA vigentes
+        if (tipo !== 'renovaciones') {
+            if (lines.length > 0) lines.push('');
+            lines.push(
+                `SECCION | POLIZAS DE ALTA VIGENTES`,
+                `CONTROL_ALTAS | filas ${totalAltas}`,
+                `COLUMNAS_ALTAS | n | aseguradora | poliza | cliente | producto | fecha_efecto | tipo_pago | prima_total`,
+                ...altasVigentes.map((a, i) => [
+                    `ALTA ${i + 1}`,
+                    clean(a.aseguradora),
+                    clean(a.numero_poliza),
+                    clean(a.cliente),
+                    clean(a.producto),
+                    fmtDate(a.fecha_efecto),
+                    clean(a.tipo_pago),
+                    fmtEuro(a.prima_total),
+                ].join(' | ')),
+                `FIN_ALTAS | filas ${totalAltas}`,
+            );
+        }
+
         return new Response(lines.join('\n') + '\n', {
             headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
         });
@@ -116,6 +159,17 @@ export async function GET(request: Request) {
             sin_fecha_baja: sinFechaBaja,
             prima_total: primaTotal,
             renovaciones,
+            total_altas_vigentes: totalAltas,
+            altas_vigentes: altasVigentes.map(a => ({
+                numero_poliza: a.numero_poliza,
+                cliente: a.cliente,
+                producto: a.producto,
+                fecha_efecto: a.fecha_efecto,
+                aseguradora: a.aseguradora,
+                tipo_pago: a.tipo_pago,
+                prima_total: a.prima_total,
+                prima_neta: a.prima_neta,
+            })),
         },
         { headers: { 'Cache-Control': 'no-store' } },
     );

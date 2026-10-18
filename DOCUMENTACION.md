@@ -1,6 +1,6 @@
 # Xeoris Solutions Portal — Documentación
 
-> **Versión 1.14 · 18/10/2026**
+> **Versión 1.15 · 18/10/2026**
 > Repositorio: `insurance-comparator` (GitHub `juanmacriado/insurance-comparator`) · Despliegue: Vercel, proyecto `insurance-comparator`.
 >
 > - **Parte I** describe la aplicación **tal cual está hoy en producción** (rama `main`, último commit `daa7d4e` del 24/02/2026).
@@ -12,6 +12,7 @@ Aunque el repositorio se llama *insurance-comparator*, la aplicación es un **po
 
 | Versión | Fecha | Cambios |
 |---|---|---|
+| 1.15 | 18/10/2026 | EV-08: `/api/renovaciones` expone además la lista de pólizas de ALTA vigentes para que el agente de Claude en su control inverso no genere falsos avisos de renovaciones ya registradas. Cálculo de la `anualidad` continuo desde el registro más antiguo con el mismo número de póliza (evita reiniciarse a 1ª en renovaciones sucesivas). |
 | 1.14 | 18/10/2026 | EV-08: el informe semanal comprueba en info@xeoris.com si la aseguradora ha enviado el aviso de renovación de cada póliza (✅ recibido / 🔎 revisar / ❌ falta, reclamar) y añade un control inverso de avisos de Hiscox sin póliza de ALTA en el portal. |
 | 1.13 | 18/10/2026 | EV-08: el informe semanal pasa a enviarse a los cuatro destinatarios (Helena Sansalvador, Omar Abarkan, Ricardo Sánchez y Juanma Criado); los avisos de error, solo a Juanma. La tarea evita envíos duplicados y descarta pólizas de BAJA. |
 | 1.12 | 18/10/2026 | Regla de renovaciones: una póliza de **BAJA nunca renueva**, tenga o no fecha de baja (antes las de BAJA sin fecha se incluían por precaución). Las liquidaciones mantienen la regla de precaución. |
@@ -375,6 +376,8 @@ Entrada: fecha desde y fecha hasta (incluidas). Una póliza aparece si:
 - está de **ALTA** (sin fecha de baja). **Una póliza de BAJA nunca renueva**, tenga o no fecha de baja (decisión del 18/10/2026);
 - y su **aniversario** `fecha_efecto + N años` (N ≥ 1) cae en el intervalo. El 29/02 renueva el 28/02 en años no bisiestos.
 - **No influye el tipo de pago**. Las de nueva producción (sin cumplir un año) no aparecen.
+- **Cálculo de la anualidad (N)**: se calcula a partir del registro más antiguo con el mismo número de póliza (`primerEfectoPorPoliza`), de modo que no se reinicia a 1ª cuando en una renovación se crea un nuevo registro de ALTA con fecha de efecto de la última anualidad (ej. Comunistone muestra 4ª anualidad en lugar de 1ª).
+- **Deduplicación**: si coexisten registros de la misma póliza que renovasen en la misma fecha, se conserva el registro con fecha de efecto más reciente.
 - Cada resultado añade `fecha_renovacion`, `anualidad` (N) y el nombre de la aseguradora. Orden: fecha de renovación y aseguradora.
 
 ## 14. Especificación por evolutivo
@@ -440,8 +443,8 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 - Ruta `GET /api/renovaciones?meses=3&formato=texto` (`app/api/renovaciones/route.ts`), **solo lectura**:
   - Autorización: `Authorization: Bearer <RENEWALS_API_TOKEN>` **o** `?token=<RENEWALS_API_TOKEN>` (la herramienta de lectura web de Claude no envía cabeceras) **o** sesión de administrador. Comparación en tiempo constante. 401 en otro caso. Como `/api` está fuera del middleware de login, la comprobación va en la propia ruta.
   - Periodo: desde hoy (hora de España) hasta hoy + `meses` (1–12, por defecto 3), con §13.4.
-  - Respuesta JSON por defecto (`desde`, `hasta`, `total`, `sin_fecha_baja`, `prima_total`, `renovaciones[]`).
-  - Con `formato=texto`: texto plano con líneas de control para que el agente verifique que ha leído todo:
+  - Respuesta JSON por defecto (`desde`, `hasta`, `total`, `sin_fecha_baja`, `prima_total`, `renovaciones[]`, `total_altas_vigentes`, `altas_vigentes[]`).
+  - Con `formato=texto`: texto plano con líneas de control para que el agente verifique que ha leído todo (mantiene prefijo `FILA` para renovaciones y añade prefijo `ALTA` para pólizas de alta vigentes):
     ```
     INFORME DE RENOVACIONES | desde dd/mm/aaaa | hasta dd/mm/aaaa | meses 3
     CONTROL | filas N | sin_fecha_baja M | prima_total X €
@@ -449,7 +452,15 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
     FILA 1 | dd/mm/aaaa | 2ª | Hiscox | Cliente | Póliza | Producto | ANUAL | 1.234,56 € | -
     ...
     FIN | filas N
+
+    SECCION | POLIZAS DE ALTA VIGENTES
+    CONTROL_ALTAS | filas M
+    COLUMNAS_ALTAS | n | aseguradora | poliza | cliente | producto | fecha_efecto | tipo_pago | prima_total
+    ALTA 1 | Hiscox | Póliza | Cliente | Producto | dd/mm/aaaa | ANUAL | 1.234,56 €
+    ...
+    FIN_ALTAS | filas M
     ```
+  - Parámetros opcionales adicionales: `?tipo=altas` (devuelve solo pólizas de ALTA) o `?tipo=renovaciones` (devuelve solo renovaciones).
 - Variable de entorno en Vercel (Production): `RENEWALS_API_TOKEN` = cadena aleatoria de 32+ caracteres (p. ej. `openssl rand -base64 32`). **No guardarla en el repositorio.**
 - En `/admin/users`, bloque informativo con enlace **Ver datos del informe** (`/api/renovaciones?meses=3`).
 
@@ -461,7 +472,7 @@ Quitar la columna/campo `pago_hiscox` de las tablas (registros, liquidación, re
 - Primera prueba (18/10/2026): 34 pólizas, 11 de BAJA sin fecha de baja, prima total 50.942,69 €; controles cuadrados. Muchas de las ⚠ compartían nº de póliza con un registro de alta (anualidad anterior). Con la regla del 18/10/2026 (las de BAJA no renuevan) dejan de aparecer.
 
 - **Control de avisos de renovación de la aseguradora (desde v1.14)**: para cada póliza del informe, la tarea busca en info@xeoris.com un aviso de renovación de la aseguradora recibido desde 150 días antes de la renovación, primero por nº de póliza y si no por nombre del cliente. Formato habitual de Hiscox: remitente `riesgosprofesionales@hiscox.com`, asunto `[nº póliza] [CLIENTE] / [CIF] - Renewal Schedule`, texto "procedemos con la renovación de esta póliza…". No cuentan cotizaciones, suplementos ni correos de comisiones. Resultado por póliza: ✅ recibido (con enlace al correo), 🔎 revisar (coincidencia solo por nombre o correo compartido por dos pólizas) o ❌ falta correo · reclamar. El correo incluye la lista de pendientes de reclamar con los días que faltan.
-- **Control inverso**: avisos "Renewal Schedule" de Hiscox de los últimos 120 días cuyo nº de póliza no está entre las renovaciones de ALTA del portal (p. ej. pólizas que figuran de BAJA pero Hiscox renueva, como Cyber-Scope 3569981): se listan para revisar.
+- **Control inverso sin falsos avisos (desde v1.15)**: avisos "Renewal Schedule" de Hiscox de los últimos 120 días cuyo nº de póliza no está entre las renovaciones de ALTA del portal. Para no dar falsos avisos cuando el corredor ya ha creado el nuevo registro de ALTA con efecto en esa renovación (el cual no sale en "próximas renovaciones" por ser anualidad en curso), el agente consulta también el listado de pólizas de ALTA vigentes de `/api/renovaciones`. Si el aviso coincide con un ALTA con fecha de efecto próxima a la renovación, se marca como "renovación ya registrada" y no se genera aviso innecesario.
 - Prueba manual del 18/10/2026: 23 pólizas → ✅ 8 · 🔎 2 · ❌ 13; control inverso: 5 avisos (Cyber-Scope, Inflection Point, Lexsuite, Santuario de Zorita, Sincronet 3600642).
 
 **Diseño original (referencia)**
@@ -503,6 +514,14 @@ La rama incluye `scripts/test-comisiones-rules.ts` (`npx tsx scripts/test-comisi
 | R06 | ALTA, efecto 10/01/2023 (intervalo dic 2026–ene 2027) | 10/01/2027 |
 | R07 | BAJA **sin** fecha (o con fecha), efecto 15/11/2024 | no aparece |
 | R08 | ALTA trimestral / semestral | aparecen igual que una anual |
+| R09 | ALTA efecto 2026-11-20 con registro origen histórico 2023-11-20 (caso Comunistone) | renueva 2027-11-20, **4ª anualidad** (no 1ª) |
+| R10 | Dos registros activos de la misma póliza con igual fecha de renovación | deduplica conservando el registro con efecto más reciente |
+
+**Pólizas de ALTA Vigentes** (`obtenerAltasVigentes`)
+| # | Caso | Resultado esperado |
+|---|---|---|
+| AV01 | Filtro de pólizas activas en situación ALTA sin fecha de baja | Devuelve solo activas, excluyendo BAJAs, orden DESC por fecha de efecto |
+| AV02 | Control inverso agente Claude | Aviso de aseguradora coincide con ALTA en fecha próxima → clasificado como ya registrado |
 
 **Validación**: BAJA sin fecha de baja → error; ALTA con fecha de baja → se guarda sin ella; tipo de pago fuera de catálogo → error.
 
